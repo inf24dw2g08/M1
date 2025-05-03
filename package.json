@@ -1,0 +1,32 @@
+{
+    "name": "m1",
+    "version": "1.0.0",
+    "description": "API de Gestão de Biblioteca",
+    "main": "M1/project-root/src/index.js",
+    "scripts": {
+        "start": "node M1/project-root/src/index.js",
+        "dev": "nodemon M1/project-root/src/index.js"
+    },
+    "dependencies": {
+        "bcrypt": "^5.1.0",
+        "cors": "^2.8.5",
+        "dotenv": "^16.0.3",
+        "express": "^4.18.2",
+        "helmet": "^6.0.1",
+        "jsonwebtoken": "^9.0.0",
+        "morgan": "^1.10.0",
+        "mysql2": "^3.1.2",
+        "oauth2-server": "^3.1.1",
+        "passport": "^0.6.0",
+        "sequelize": "^6.29.0",
+        "swagger-jsdoc": "^6.2.8",
+        "swagger-ui-express": "^4.6.2",
+        "winston": "^3.17.0"
+    },
+    "devDependencies": {
+        "jest": "^29.4.3",
+        "nodemon": "^2.0.20",
+        "sequelize-cli": "^6.6.0",
+        "supertest": "^6.3.3"
+    }
+}
