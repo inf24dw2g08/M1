@@ -35,7 +35,12 @@ const format = winston.format.combine(
 // Define onde os logs serão armazenados
 const transports = [
   // Console para desenvolvimento
-  new winston.transports.Console(),
+  new winston.transports.Console({
+    format: winston.format.combine(
+      winston.format.colorize(),
+      winston.format.simple()
+    )
+  }),
   
   // Arquivo para logs de erro
   new winston.transports.File({
@@ -51,9 +56,12 @@ const transports = [
 
 // Cria a instância do logger
 const logger = winston.createLogger({
-  level: process.env.NODE_ENV === 'development' ? 'debug' : 'info',
+  level: process.env.LOG_LEVEL || 'info',
   levels,
-  format,
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
   transports,
 });
 

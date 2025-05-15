@@ -1,473 +1,651 @@
 {
-    "info": {
-      "name": "Biblioteca API Collection",
-      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-      "_exporter_id": "12345678"
+  "info": {
+    "_postman_id": "e92a7742-7e9c-4e60-8a97-93b3ffde5c24",
+    "name": "Library API",
+    "description": "Coleção de requisições para a API da Biblioteca",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "OAuth Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password",
+                  "type": "text"
+                },
+                {
+                  "key": "username",
+                  "value": "admin",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "admin123",
+                  "type": "text"
+                },
+                {
+                  "key": "client_id",
+                  "value": "library_client",
+                  "type": "text"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "library_secret",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/oauth/token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "oauth",
+                "token"
+              ]
+            },
+            "description": "Obter token de acesso OAuth 2.0"
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "refresh_token",
+                  "type": "text"
+                },
+                {
+                  "key": "refresh_token",
+                  "value": "{{refreshToken}}",
+                  "type": "text"
+                },
+                {
+                  "key": "client_id",
+                  "value": "library_client",
+                  "type": "text"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "library_secret",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/oauth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "oauth",
+                "refresh"
+              ]
+            },
+            "description": "Atualizar token de acesso usando refresh token"
+          },
+          "response": []
+        }
+      ],
+      "description": "Autenticação e autorização"
     },
-    "item": [
-      {
-        "name": "Authentication",
-        "item": [
-          {
-            "name": "Register",
-            "request": {
-              "method": "POST",
-              "header": [],
-              "body": {
-                "mode": "raw",
-                "raw": "{\n    \"username\": \"newuser\",\n    \"email\": \"newuser@example.com\",\n    \"password\": \"password123\",\n    \"role\": \"user\"\n}",
-                "options": {
-                  "raw": {
-                    "language": "json"
-                  }
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
                 }
-              },
-              "url": {
-                "raw": "http://localhost:3000/api/auth/register",
-                "protocol": "http",
-                "host": ["localhost"],
-                "port": "3000",
-                "path": ["api", "auth", "register"]
-              }
-            }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "Listar todos os usuários (requer role admin)"
           },
-          {
-            "name": "Login",
-            "request": {
-              "method": "POST",
-              "header": [],
-              "body": {
-                "mode": "raw",
-                "raw": "{\n    \"username\": \"admin\",\n    \"password\": \"admin123\"\n}",
-                "options": {
-                  "raw": {
-                    "language": "json"
-                  }
+          "response": []
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
                 }
-              },
-              "url": {
-                "raw": "http://localhost:3000/api/auth/login",
-                "protocol": "http",
-                "host": ["localhost"],
-                "port": "3000",
-                "path": ["api", "auth", "login"]
-              }
-            }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "1"
+              ]
+            },
+            "description": "Obter detalhes de um usuário específico"
           },
-          {
-            "name": "OAuth Token",
-            "request": {
-              "auth": {
-                "type": "basic",
-                "basic": {
-                  "username": "biblioteca-client",
-                  "password": "biblioteca-secret"
+          "response": []
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
                 }
-              },
-              "method": "POST",
-              "header": [],
-              "body": {
-                "mode": "urlencoded",
-                "urlencoded": [
-                  {
-                    "key": "grant_type",
-                    "value": "password",
-                    "type": "text"
-                  },
-                  {
-                    "key": "username",
-                    "value": "admin",
-                    "type": "text"
-                  },
-                  {
-                    "key": "password",
-                    "value": "admin123",
-                    "type": "text"
-                  }
-                ]
-              },
-              "url": {
-                "raw": "http://localhost:3000/api/oauth/token",
-                "protocol": "http",
-                "host": ["localhost"],
-                "port": "3000",
-                "path": ["api", "oauth", "token"]
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
-            }
-          }
-        ]
-      },
-      {
-        "name": "Users",
-        "item": [
-          {
-            "name": "Get All Users",
-            "request": {
-              "auth": {
-                "type": "bearer",
-                "bearer": [
-                  {
-                    "key": "token",
-                    "value": "{{token}}",
-                    "type": "string"
-                  }
-                ]
-              },
-              "method": "GET",
-              "header": [],
-              "url": {
-                "raw": "http://localhost:3000/api/users",
-                "protocol": "http",
-                "host": ["localhost"],
-                "port": "3000",
-                "path": ["api", "users"]
-              }
-            }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"novousuario\",\n    \"email\": \"novo@exemplo.com\",\n    \"password\": \"senha123\",\n    \"role\": \"user\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "Criar um novo usuário"
           },
-          {
-            "name": "Get User by ID",
-            "request": {
-              "auth": {
-                "type": "bearer",
-                "bearer": [
-                  {
-                    "key": "token",
-                    "value": "{{token}}",
-                    "type": "string"
-                  }
-                ]
-              },
-              "method": "GET",
-              "header": [],
-              "url": {
-                "raw": "http://localhost:3000/api/users/1",
-                "protocol": "http",
-                "host": ["localhost"],
-                "port": "3000",
-                "path": ["api", "users", "1"]
-              }
-            }
-          },
-          {
-            "name": "Update User",
-            "request": {
-              "auth": {
-                "type": "bearer",
-                "bearer": [
-                  {
-                    "key": "token",
-                    "value": "{{token}}",
-                    "type": "string"
-                  }
-                ]
-              },
-              "method": "PUT",
-              "header": [],
-              "body": {
-                "mode": "raw",
-                "raw": "{\n    \"username\": \"updateduser\",\n    \"email\": \"updated@example.com\"\n}",
-                "options": {
-                  "raw": {
-                    "language": "json"
-                  }
+          "response": []
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
                 }
-              },
-              "url": {
-                "raw": "http://localhost:3000/api/users/1",
-                "protocol": "http",
-                "host": ["localhost"],
-                "port": "3000",
-                "path": ["api", "users", "1"]
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
-            }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"atualizado@exemplo.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "2"
+              ]
+            },
+            "description": "Atualizar um usuário existente"
           },
-          {
-            "name": "Delete User",
-            "request": {
-              "auth": {
-                "type": "bearer",
-                "bearer": [
-                  {
-                    "key": "token",
-                    "value": "{{token}}",
-                    "type": "string"
-                  }
-                ]
-              },
-              "method": "DELETE",
-              "header": [],
-              "url": {
-                "raw": "http://localhost:3000/api/users/2",
-                "protocol": "http",
-                "host": ["localhost"],
-                "port": "3000",
-                "path": ["api", "users", "2"]
-              }
-            }
-          }
-        ]
-      },
-      {
-        "name": "Books",
-        "item": [
-          {
-            "name": "Get All Books",
-            "request": {
-              "auth": {
-                "type": "bearer",
-                "bearer": [
-                  {
-                    "key": "token",
-                    "value": "{{token}}",
-                    "type": "string"
-                  }
-                ]
-              },
-              "method": "GET",
-              "header": [],
-              "url": {
-                "raw": "http://localhost:3000/api/books",
-                "protocol": "http",
-                "host": ["localhost"],
-                "port": "3000",
-                "path": ["api", "books"]
-              }
-            }
-          },
-          {
-            "name": "Get Book by ID",
-            "request": {
-              "auth": {
-                "type": "bearer",
-                "bearer": [
-                  {
-                    "key": "token",
-                    "value": "{{token}}",
-                    "type": "string"
-                  }
-                ]
-              },
-              "method": "GET",
-              "header": [],
-              "url": {
-                "raw": "http://localhost:3000/api/books/1",
-                "protocol": "http",
-                "host": ["localhost"],
-                "port": "3000",
-                "path": ["api", "books", "1"]
-              }
-            }
-          },
-          {
-            "name": "Create Book",
-            "request": {
-              "auth": {
-                "type": "bearer",
-                "bearer": [
-                  {
-                    "key": "token",
-                    "value": "{{token}}",
-                    "type": "string"
-                  }
-                ]
-              },
-              "method": "POST",
-              "header": [],
-              "body": {
-                "mode": "raw",
-                "raw": "{\n    \"title\": \"New Book\",\n    \"author\": \"Author Name\",\n    \"genre\": \"Fiction\",\n    \"published_year\": 2023,\n    \"available\": true\n}",
-                "options": {
-                  "raw": {
-                    "language": "json"
-                  }
+          "response": []
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
                 }
-              },
-              "url": {
-                "raw": "http://localhost:3000/api/books",
-                "protocol": "http",
-                "host": ["localhost"],
-                "port": "3000",
-                "path": ["api", "books"]
-              }
-            }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "3"
+              ]
+            },
+            "description": "Excluir um usuário"
           },
-          {
-            "name": "Update Book",
-            "request": {
-              "auth": {
-                "type": "bearer",
-                "bearer": [
-                  {
-                    "key": "token",
-                    "value": "{{token}}",
-                    "type": "string"
-                  }
-                ]
-              },
-              "method": "PUT",
-              "header": [],
-              "body": {
-                "mode": "raw",
-                "raw": "{\n    \"title\": \"Updated Book\",\n    \"author\": \"Updated Author\",\n    \"genre\": \"Non-fiction\",\n    \"published_year\": 2022,\n    \"available\": true\n}",
-                "options": {
-                  "raw": {
-                    "language": "json"
-                  }
+          "response": []
+        }
+      ],
+      "description": "Endpoints de usuários"
+    },
+    {
+      "name": "Books",
+      "item": [
+        {
+          "name": "Get All Books",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/books",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "books"
+              ]
+            },
+            "description": "Listar todos os livros"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Book by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/books/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "books",
+                "1"
+              ]
+            },
+            "description": "Obter detalhes de um livro específico"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Book",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
                 }
-              },
-              "url": {
-                "raw": "http://localhost:3000/api/books/1",
-                "protocol": "http",
-                "host": ["localhost"],
-                "port": "3000",
-                "path": ["api", "books", "1"]
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
-            }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Novo Livro\",\n    \"author\": \"Autor Teste\",\n    \"isbn\": \"1234567890123\",\n    \"published_year\": 2023,\n    \"genre\": \"Ficção\",\n    \"description\": \"Descrição do livro\",\n    \"available\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/books",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "books"
+              ]
+            },
+            "description": "Adicionar um novo livro (requer autenticação admin)"
           },
-          {
-            "name": "Delete Book",
-            "request": {
-              "auth": {
-                "type": "bearer",
-                "bearer": [
-                  {
-                    "key": "token",
-                    "value": "{{token}}",
-                    "type": "string"
-                  }
-                ]
-              },
-              "method": "DELETE",
-              "header": [],
-              "url": {
-                "raw": "http://localhost:3000/api/books/1",
-                "protocol": "http",
-                "host": ["localhost"],
-                "port": "3000",
-                "path": ["api", "books", "1"]
-              }
-            }
-          }
-        ]
-      },
-      {
-        "name": "Loans",
-        "item": [
-          {
-            "name": "Get All Loans",
-            "request": {
-              "auth": {
-                "type": "bearer",
-                "bearer": [
-                  {
-                    "key": "token",
-                    "value": "{{token}}",
-                    "type": "string"
-                  }
-                ]
-              },
-              "method": "GET",
-              "header": [],
-              "url": {
-                "raw": "http://localhost:3000/api/loans",
-                "protocol": "http",
-                "host": ["localhost"],
-                "port": "3000",
-                "path": ["api", "loans"]
-              }
-            }
-          },
-          {
-            "name": "Get Loan by ID",
-            "request": {
-              "auth": {
-                "type": "bearer",
-                "bearer": [
-                  {
-                    "key": "token",
-                    "value": "{{token}}",
-                    "type": "string"
-                  }
-                ]
-              },
-              "method": "GET",
-              "header": [],
-              "url": {
-                "raw": "http://localhost:3000/api/loans/1",
-                "protocol": "http",
-                "host": ["localhost"],
-                "port": "3000",
-                "path": ["api", "loans", "1"]
-              }
-            }
-          },
-          {
-            "name": "Create Loan",
-            "request": {
-              "auth": {
-                "type": "bearer",
-                "bearer": [
-                  {
-                    "key": "token",
-                    "value": "{{token}}",
-                    "type": "string"
-                  }
-                ]
-              },
-              "method": "POST",
-              "header": [],
-              "body": {
-                "mode": "raw",
-                "raw": "{\n    \"user_id\": 1,\n    \"book_id\": 3\n}",
-                "options": {
-                  "raw": {
-                    "language": "json"
-                  }
+          "response": []
+        },
+        {
+          "name": "Update Book",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
                 }
-              },
-              "url": {
-                "raw": "http://localhost:3000/api/loans",
-                "protocol": "http",
-                "host": ["localhost"],
-                "port": "3000",
-                "path": ["api", "loans"]
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
-            }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"description\": \"Descrição atualizada\",\n    \"available\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/books/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "books",
+                "1"
+              ]
+            },
+            "description": "Atualizar um livro existente"
           },
-          {
-            "name": "Return Book",
-            "request": {
-              "auth": {
-                "type": "bearer",
-                "bearer": [
-                  {
-                    "key": "token",
-                    "value": "{{token}}",
-                    "type": "string"
-                  }
-                ]
-              },
-              "method": "PUT",
-              "header": [],
-              "body": {
-                "mode": "raw",
-                "raw": "{\n    \"returned\": true\n}",
-                "options": {
-                  "raw": {
-                    "language": "json"
-                  }
+          "response": []
+        },
+        {
+          "name": "Delete Book",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
                 }
-              },
-              "url": {
-                "raw": "http://localhost:3000/api/loans/1/return",
-                "protocol": "http",
-                "host": ["localhost"],
-                "port": "3000",
-                "path": ["api", "loans", "1", "return"]
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/books/2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "books",
+                "2"
+              ]
+            },
+            "description": "Excluir um livro"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints de livros"
+    },
+    {
+      "name": "Loans",
+      "item": [
+        {
+          "name": "Get All Loans",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans"
+              ]
+            },
+            "description": "Listar todos os empréstimos (admin vê todos, usuários veem apenas os seus)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Loan by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "1"
+              ]
+            },
+            "description": "Obter detalhes de um empréstimo específico (apenas dono ou admin)"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Loan",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
-            }
-          }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"book_id\": 1,\n    \"due_date\": \"2023-12-31T00:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans"
+              ]
+            },
+            "description": "Criar um novo empréstimo"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Loan",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"return_date\": \"2023-12-15T00:00:00Z\",\n    \"status\": \"returned\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "1"
+              ]
+            },
+            "description": "Atualizar um empréstimo (marcar como devolvido)"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Loan",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "2"
+              ]
+            },
+            "description": "Excluir um empréstimo (apenas admin)"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints de empréstimos"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
         ]
       }
-    ]
-  }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Salvar tokens automaticamente quando recebidos",
+          "if (pm.response.code === 200 && pm.response.json().access_token) {",
+          "    pm.environment.set(\"accessToken\", pm.response.json().access_token);",
+          "    ",
+          "    if (pm.response.json().refresh_token) {",
+          "        pm.environment.set(\"refreshToken\", pm.response.json().refresh_token);",
+          "    }",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ]
+}

@@ -1,115 +1,206 @@
-const User = require('../models/userModel');
-const bcrypt = require('bcrypt');
+const db = require('../config/db.config');
+const bcrypt = require("bcryptjs");
 
-/**
- * Obtém um usuário pelo ID
- */
-exports.getUserById = async (req, res, next) => {
+// Obter todos os usuários
+const getAllUsers = async (req, res) => {
   try {
-    const userId = req.params.id;
-    
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    
-    // Não retornar a senha no response
-    delete user.password;
-    
-    res.json(user);
+    const [users] = await db.query(
+      'SELECT id, username, email, role, created_at, updated_at FROM users'
+    );
+    res.json(users);
   } catch (error) {
-    next(error);
+    console.error('Erro ao buscar usuários:', error);
+    res.status(500).json({ message: 'Erro ao buscar usuários' });
   }
 };
 
-/**
- * Obtém todos os usuários (apenas para admins)
- */
-exports.getAllUsers = async (req, res, next) => {
+// Obter usuário por ID
+const getUserById = async (req, res) => {
   try {
-    // Verificar se o usuário atual é admin - esta verificação também pode ser feita via middleware
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied' });
+    const userId = req.params.id;
+    const [users] = await db.query(
+      'SELECT id, username, email, role, created_at, updated_at FROM users WHERE id = ?',
+      [userId]
+    );
+    
+    if (users.length === 0) {
+      return res.status(404).json({ message: 'Usuário não encontrado' });
     }
     
-    const users = await User.findAll();
+    res.json(users[0]);
+  } catch (error) {
+    console.error('Erro ao buscar usuário:', error);
+    res.status(500).json({ message: 'Erro ao buscar usuário' });
+  }
+};
+
+// Criar um novo usuário
+const createUser = async (req, res) => {
+  try {
+    const { username, email, password, role } = req.body;
     
-    // Remover senhas da resposta
-    const usersWithoutPasswords = users.map(user => {
-      const { password, ...userWithoutPassword } = user;
-      return userWithoutPassword;
+    // Validar dados
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: 'Todos os campos são obrigatórios' });
+    }
+    
+    // Verificar se usuário já existe
+    const [existingUsers] = await db.query(
+      'SELECT * FROM users WHERE username = ? OR email = ?',
+      [username, email]
+    );
+    
+    if (existingUsers.length > 0) {
+      return res.status(400).json({ message: 'Nome de usuário ou email já está em uso' });
+    }
+    
+    // Hash da senha
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    
+    // Inserir usuário
+    const [result] = await db.query(
+      'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
+      [username, email, hashedPassword, role || 'user']
+    );
+    
+    res.status(201).json({
+      id: result.insertId,
+      username,
+      email,
+      role: role || 'user'
     });
-    
-    res.json(usersWithoutPasswords);
   } catch (error) {
-    next(error);
+    console.error('Erro ao criar usuário:', error);
+    res.status(500).json({ message: 'Erro ao criar usuário' });
   }
 };
 
-/**
- * Atualiza um usuário
- */
-exports.updateUser = async (req, res, next) => {
+// Atualizar usuário
+const updateUser = async (req, res) => {
   try {
     const userId = req.params.id;
+    const { email, password } = req.body;
     
-    // Verificar se o usuário existe
-    const existingUser = await User.findById(userId);
-    if (!existingUser) {
-      return res.status(404).json({ message: 'User not found' });
+    // Verificar se usuário existe
+    const [users] = await db.query(
+      'SELECT * FROM users WHERE id = ?',
+      [userId]
+    );
+    
+    if (users.length === 0) {
+      return res.status(404).json({ message: 'Usuário não encontrado' });
     }
     
-    // Verificar permissões - apenas o próprio usuário ou um admin pode atualizar
-    if (req.user.id !== userId && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
+    // Preparar dados para atualização
+    const updates = {};
     
-    const { name, email, role } = req.body;
-    let { password } = req.body;
+    if (email) updates.email = email;
     
-    // Se a senha foi fornecida, hash ela
     if (password) {
       const salt = await bcrypt.genSalt(10);
-      password = await bcrypt.hash(password, salt);
+      updates.password = await bcrypt.hash(password, salt);
     }
     
-    // Atualizar usuário
-    await User.update(userId, { 
-      name, 
-      email, 
-      password, 
-      role: req.user.role === 'admin' ? role : existingUser.role // Apenas admins podem alterar roles
-    });
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: 'Nenhum dado fornecido para atualização' });
+    }
     
-    res.json({ message: 'User updated successfully' });
+    // Construir query de atualização
+    const fields = Object.keys(updates).map(key => `${key} = ?`).join(', ');
+    const values = Object.values(updates);
+    
+    // Adicionar ID ao final dos valores
+    values.push(userId);
+    
+    // Executar atualização
+    await db.query(
+      `UPDATE users SET ${fields} WHERE id = ?`,
+      values
+    );
+    
+    res.json({ message: 'Usuário atualizado com sucesso' });
   } catch (error) {
-    next(error);
+    console.error('Erro ao atualizar usuário:', error);
+    res.status(500).json({ message: 'Erro ao atualizar usuário' });
   }
 };
 
-/**
- * Exclui um usuário
- */
-exports.deleteUser = async (req, res, next) => {
+// Excluir usuário
+const deleteUser = async (req, res) => {
   try {
     const userId = req.params.id;
     
-    // Verificar se o usuário existe
-    const existingUser = await User.findById(userId);
-    if (!existingUser) {
-      return res.status(404).json({ message: 'User not found' });
+    // Verificar se usuário existe
+    const [users] = await db.query(
+      'SELECT * FROM users WHERE id = ?',
+      [userId]
+    );
+    
+    if (users.length === 0) {
+      return res.status(404).json({ message: 'Usuário não encontrado' });
     }
     
-    // Verificar permissões - apenas o próprio usuário ou um admin pode excluir
-    if (req.user.id !== userId && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
+    // Excluir empréstimos do usuário primeiro (integridade referencial)
+    await db.query('DELETE FROM loans WHERE user_id = ?', [userId]);
     
     // Excluir usuário
-    await User.delete(userId);
+    await db.query('DELETE FROM users WHERE id = ?', [userId]);
     
-    res.json({ message: 'User deleted successfully' });
+    res.json({ message: 'Usuário excluído com sucesso' });
   } catch (error) {
-    next(error);
+    console.error('Erro ao excluir usuário:', error);
+    res.status(500).json({ message: 'Erro ao excluir usuário' });
   }
+};
+
+// Registrar novo usuário (rota pública)
+const registerUser = async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+    
+    // Validar dados
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: 'Todos os campos são obrigatórios' });
+    }
+    
+    // Verificar se usuário já existe
+    const [existingUsers] = await db.query(
+      'SELECT * FROM users WHERE username = ? OR email = ?',
+      [username, email]
+    );
+    
+    if (existingUsers.length > 0) {
+      return res.status(400).json({ message: 'Nome de usuário ou email já está em uso' });
+    }
+    
+    // Hash da senha
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    
+    // Inserir usuário com role 'user'
+    const [result] = await db.query(
+      'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
+      [username, email, hashedPassword, 'user']
+    );
+    
+    res.status(201).json({
+      id: result.insertId,
+      username,
+      email,
+      role: 'user'
+    });
+  } catch (error) {
+    console.error('Erro ao registrar usuário:', error);
+    res.status(500).json({ message: 'Erro ao registrar usuário' });
+  }
+};
+
+module.exports = {
+  getAllUsers,
+  getUserById,
+  createUser,
+  updateUser,
+  deleteUser,
+  registerUser
 };

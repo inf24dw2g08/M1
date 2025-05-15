@@ -2,11 +2,11 @@ const oauth2orize = require('oauth2orize');
 const passport = require('passport');
 const BasicStrategy = require('passport-http').BasicStrategy;
 const ClientPasswordStrategy = require('passport-oauth2-client-password').Strategy;
-const bcrypt = require('bcrypt');
+const bcrypt = require("bcryptjs");
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
-// Importação correta
 const authConfig = require('./auth');
+const { generateAccessToken, generateRefreshToken, validateRefreshToken } = require('./oauth');
 
 // Criar servidor OAuth2
 const server = oauth2orize.createServer();
@@ -64,19 +64,10 @@ server.exchange(oauth2orize.exchange.password(async (client, username, password,
     }
     
     // Gerar token JWT usando o objeto importado
-    const token = jwt.sign(
-      { 
-        id: user.id, 
-        name: user.name,
-        email: user.email, 
-        role: user.role 
-      },
-      authConfig.jwtSecret,
-      { expiresIn: authConfig.jwtExpiration }
-    );
+    const token = generateAccessToken(user);
     
     // Gerar refresh token
-    const refreshToken = require('crypto').randomBytes(32).toString('hex');
+    const refreshToken = generateRefreshToken(user);
     
     // Armazenar refresh token (em produção: Redis/BD)
     refreshTokens[refreshToken] = {
@@ -108,41 +99,31 @@ server.exchange(oauth2orize.exchange.password(async (client, username, password,
 // Exchange refresh token
 server.exchange(oauth2orize.exchange.refreshToken((client, refreshToken, scope, done) => {
   // Verificar se o refresh token existe
-  if (!refreshTokens[refreshToken]) {
+  const tokenData = validateRefreshToken(refreshToken);
+  if (!tokenData || !refreshTokens[refreshToken]) {
     return done(null, false);
   }
   
-  const tokenData = refreshTokens[refreshToken];
-  
   // Verificar cliente
-  if (client.id !== tokenData.clientId) {
+  if (client.id !== refreshTokens[refreshToken].clientId) {
     return done(null, false);
   }
   
   // Verificar expiração
-  if (tokenData.expires < Date.now()) {
+  if (refreshTokens[refreshToken].expires < Date.now()) {
     delete refreshTokens[refreshToken];
     return done(null, false);
   }
   
   // Buscar usuário
-  User.findById(tokenData.userId)
+  User.findById(tokenData.id)
     .then(user => {
       if (!user) {
         return done(null, false);
       }
       
       // Gerar novo token JWT usando o objeto importado
-      const token = jwt.sign(
-        { 
-          id: user.id, 
-          name: user.name,
-          email: user.email, 
-          role: user.role 
-        },
-        authConfig.jwtSecret,
-        { expiresIn: authConfig.jwtExpiration }
-      );
+      const token = generateAccessToken(user);
       
       // Log de refresh
       console.log('\x1b[32m%s\x1b[0m', '------------------------------------------------');

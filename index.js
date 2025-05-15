@@ -1,90 +1,59 @@
 const app = require('./src/app');
-const db = require('./src/config/db.config');
+const dbConfig = require('./src/config/db.config');
+const dbSetup = require('./src/config/db-setup');
+require('dotenv').config();
 
 const PORT = process.env.PORT || 3000;
 
-// Impedir que o processo Node.js saia
-process.stdin.resume();
-console.log('Processo mantido ativo com process.stdin.resume()');
-
-// Adicionar um timer para manter o processo rodando
-setInterval(() => {
-  console.log('Verificação de atividade do processo');
-}, 60000); // Verificar a cada minuto
-
-// Função para tentar conectar ao banco de dados com repetições
-async function connectToDatabase(maxAttempts = 30, delay = 10000) {
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      console.log(`Tentativa ${attempt} de ${maxAttempts} para conectar ao banco de dados...`);
-      await db.query('SELECT 1');
-      console.log('Conexão com o banco de dados estabelecida!');
-      return true;
-    } catch (error) {
-      console.error(`Tentativa ${attempt} falhou:`, error.message);
-      if (attempt < maxAttempts) {
-        console.log(`Aguardando ${delay/1000} segundos antes da próxima tentativa...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-  }
-  console.error('Todas as tentativas de conexão falharam');
-  return false;
-}
-
-// Inicializar banco de dados e servidor
-async function initServer() {
+// Função para iniciar o servidor
+const startServer = async () => {
   try {
-    // Tentar conectar ao banco de dados com várias tentativas
-    const dbConnected = await connectToDatabase();
-    
-    // Popular banco de dados se necessário
-    if (dbConnected) {
-      try {
-        const seedDatabase = require('./src/config/seed.js');
-        await seedDatabase();
-      } catch (seedError) {
-        console.error('Erro ao popular banco de dados:', seedError.message);
-      }
-    } else {
-      console.log('A aplicação será iniciada sem funcionalidades de banco de dados');
-    }
-    
-    // Iniciar servidor e monitorar eventos
-    const server = app.listen(PORT, () => {
-      console.log(`Servidor rodando na porta ${PORT}`);
-      if (!dbConnected) {
-        console.log('AVISO: Aplicação em modo limitado - Banco de dados não disponível');
-      }
+    // Tentar conectar ao banco de dados
+    console.log('Tentando conectar ao banco de dados:');
+    console.log('Host:', process.env.DB_HOST || 'library_mysql');
+    console.log('User:', process.env.DB_USER || 'root');
+    console.log('Database:', process.env.DB_NAME || 'library_db');
+    console.log('Senha:', '****** (oculta)');
+
+    // Verificar conexão com o banco de dados
+    const connection = await dbConfig.getConnection();
+    console.log('Conexão com o banco de dados estabelecida com sucesso!');
+    connection.release();
+
+    // Configurar banco de dados (criar colunas necessárias)
+    await dbSetup.setupDatabase();
+
+    // Iniciar o servidor
+    app.listen(PORT, () => {
+      console.log(`Servidor rodando em http://localhost:${PORT}`);
+      console.log(`Documentação da API disponível em http://localhost:${PORT}/api-docs`);
     });
     
-    // Monitorar eventos do servidor
-    server.on('error', (error) => {
-      console.error('Erro no servidor:', error);
-    });
+    // Mantém o processo ativo
+    process.stdin.resume();
     
-    server.on('close', () => {
-      console.log('Servidor foi fechado');
-    });
+    // Tratamento de encerramento
+    const handleShutdown = () => {
+      console.log('Encerrando servidor...');
+      process.exit(0);
+    };
     
+    process.on('SIGINT', handleShutdown);
+    process.on('SIGTERM', handleShutdown);
   } catch (error) {
-    console.error('Erro ao inicializar servidor:', error);
-    // Não finalizar o processo mesmo com erro
+    console.error('Erro ao iniciar servidor:', error);
+    // Tentar novamente após 5 segundos se for erro de conexão
+    if (error.code === 'ECONNREFUSED') {
+      console.log('Falha na conexão com o banco de dados. Tentando novamente em 5 segundos...');
+      setTimeout(startServer, 5000);
+    } else {
+      process.exit(1);
+    }
   }
-}
-
-// Prevenir que erros não tratados derrubem a aplicação
-process.on('uncaughtException', (error) => {
-  console.error('Erro não tratado:', error);
-  // Não finalizar o processo
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Promessa rejeitada não tratada:', reason);
-  // Não finalizar o processo
-});
+};
 
 // Iniciar o servidor
-initServer().catch(error => {
-  console.error('Erro ao iniciar servidor:', error);
-});
+startServer();console.log("Iniciando aplicação com GOOGLE_CALLBACK_URL=", process.env.GOOGLE_CALLBACK_URL);
+console.log("Iniciando aplicação com GOOGLE_CALLBACK_URL=", process.env.GOOGLE_CALLBACK_URL);
+console.log("Iniciando aplicação com GOOGLE_CALLBACK_URL=", process.env.GOOGLE_CALLBACK_URL);
+console.log("Iniciando aplicação com GOOGLE_CALLBACK_URL=", process.env.GOOGLE_CALLBACK_URL);

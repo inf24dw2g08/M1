@@ -1,0 +1,1 @@
+console.log("Procurando referências a bcryptjsjsjs..."); for file in $(find /app/src -name "*.js"); do if grep -q bcryptjsjsjs "$file"; then echo "Encontrado em $file"; cat "$file" | head -n 5; fi; done

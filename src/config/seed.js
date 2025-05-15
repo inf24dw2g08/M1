@@ -5,7 +5,7 @@ async function createTables() {
   try {
     console.log('Criando tabelas...');
     
-    // Criar tabela de usuários
+    // Criar tabela de usuários com campo refresh_token
     await db.query(`
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -13,6 +13,7 @@ async function createTables() {
         email VARCHAR(100) NOT NULL UNIQUE,
         password VARCHAR(255) NOT NULL,
         role ENUM('user', 'admin') DEFAULT 'user',
+        refresh_token TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )

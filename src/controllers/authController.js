@@ -1,5 +1,5 @@
 const User = require('../models/userModel');
-const bcrypt = require('bcrypt');
+const bcrypt = require("bcryptjs");
 const jwt = require('jsonwebtoken');
 // Importação correta para evitar dependência circular
 const authConfig = require('../config/auth');

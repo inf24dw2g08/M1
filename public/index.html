@@ -34,7 +34,7 @@
             background-color: #f9f9f9;
             border-left: 4px solid #3498db;
         }
-        .docs-link {
+        .docs-link, .oauth-button {
             display: inline-block;
             margin-top: 20px;
             padding: 10px 15px;
@@ -43,8 +43,26 @@
             text-decoration: none;
             border-radius: 4px;
         }
-        .docs-link:hover {
+        .oauth-button {
+            background-color: #4285F4;
+            margin-right: 10px;
+        }
+        .docs-link:hover, .oauth-button:hover {
             background-color: #2980b9;
+        }
+        .oauth-button:hover {
+            background-color: #3367D6;
+        }
+        .auth-section {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        #token-display {
+            margin-top: 20px;
+            word-break: break-all;
+            display: none;
         }
     </style>
 </head>
@@ -72,7 +90,54 @@
             </div>
         </div>
         
-        <a href="/api-docs" class="docs-link">Acessar documentação completa da API</a>
+        <div class="auth-section">
+            <h2>Autenticação</h2>
+            <p>Use OAuth 2.0 para autenticar-se e acessar recursos protegidos:</p>
+            <a href="/api/oauth/google" class="oauth-button">Login com Google</a>
+            <a href="/api-docs" class="docs-link">Acessar documentação completa da API</a>
+            
+            <div id="token-display">
+                <h3>Seu token de acesso:</h3>
+                <pre id="access-token"></pre>
+                <button id="copy-token" class="oauth-button">Copiar Token</button>
+            </div>
+        </div>
     </div>
+
+    <script>
+        // Verificar se há token na URL (retorno do Google OAuth)
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            const refreshToken = urlParams.get('refresh_token');
+            
+            if (token) {
+                // Limpar URL
+                window.history.replaceState({}, document.title, "/");
+                
+                // Mostrar o token na página
+                document.getElementById('token-display').style.display = 'block';
+                document.getElementById('access-token').textContent = token;
+                
+                // Armazenar tokens no localStorage
+                localStorage.setItem('accessToken', token);
+                if (refreshToken) {
+                    localStorage.setItem('refreshToken', refreshToken);
+                }
+            }
+            
+            // Adicionar função de cópia
+            document.getElementById('copy-token').addEventListener('click', function() {
+                const tokenText = document.getElementById('access-token').textContent;
+                navigator.clipboard.writeText(tokenText)
+                    .then(() => {
+                        alert('Token copiado para a área de transferência!');
+                    })
+                    .catch(err => {
+                        console.error('Erro ao copiar texto: ', err);
+                    });
+            });
+        });
+    </script>
 </body>
 </html>
