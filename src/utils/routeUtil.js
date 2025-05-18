@@ -13,7 +13,7 @@ const handleRouteError = (err, res) => {
 
 // Função para validar IDs
 const validateId = (id) => {
-  return /^[0-9a-fA-F]{24}$/.test(id); // Validação para MongoDB ObjectId
+  return !isNaN(parseInt(id)) && parseInt(id) > 0; // Validação para MySQL ID (número positivo)
 };
 
 // Função para middleware de validação de requisição

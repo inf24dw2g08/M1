@@ -1,36 +1,31 @@
-const mysql = require('mysql2/promise');
+const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
-// Logar as configurações do banco de dados (sem senhas!)
-console.log('Tentando conectar ao banco de dados:');
-console.log(`Host: ${process.env.DB_HOST}`);
-console.log(`User: ${process.env.DB_USER}`);
-console.log(`Database: ${process.env.DB_NAME}`);
-console.log('Senha: ****** (oculta)');
-
-// Configuração do pool de conexões
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
+console.log('Configurando Sequelize para conectar em:', {
+  host: process.env.DB_HOST || 'library_mysql',
   database: process.env.DB_NAME || 'library_db',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+  user: process.env.DB_USER || 'root'
 });
 
-// Função para obter uma conexão do pool
-async function getConnection() {
-  return await pool.getConnection();
-}
+const sequelize = new Sequelize(
+  process.env.DB_NAME || 'library_db',
+  process.env.DB_USER || 'root',
+  process.env.DB_PASSWORD || 'rootpassword',
+  {
+    host: process.env.DB_HOST || 'library_mysql',
+    dialect: 'mysql',
+    logging: console.log, // Ativar logs SQL durante debug
+    define: {
+      underscored: true,
+      timestamps: false // Desativar timestamps para compatibilidade
+    },
+    pool: {
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    }
+  }
+);
 
-// Função para executar queries diretamente
-async function query(sql, params) {
-  return await pool.query(sql, params);
-}
-
-module.exports = {
-  pool,
-  getConnection,
-  query
-};
+module.exports = sequelize;

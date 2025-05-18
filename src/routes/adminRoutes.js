@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/db.config');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
+const User = require('../models/userModel');
+const Book = require('../models/bookModel');
+const Loan = require('../models/loanModel');
 
 // Rota para obter estatísticas do banco de dados (apenas para admin)
 router.get('/db-stats', 
@@ -10,18 +12,14 @@ router.get('/db-stats',
   async (req, res) => {
     try {
       // Obter contagem de registros em cada tabela
-      const [usersCount] = await db.query('SELECT COUNT(*) as count FROM users');
-      const [booksCount] = await db.query('SELECT COUNT(*) as count FROM books');
-      const [loansCount] = await db.query('SELECT COUNT(*) as count FROM loans');
+      const users = await User.count();
+      const books = await Book.count();
+      const loans = await Loan.count();
       
       // Retornar estatísticas
       res.json({
-        tables: {
-          users: usersCount[0].count,
-          books: booksCount[0].count,
-          loans: loansCount[0].count
-        },
-        total_records: usersCount[0].count + booksCount[0].count + loansCount[0].count
+        tables: { users, books, loans },
+        total_records: users + books + loans
       });
     } catch (error) {
       console.error('Erro ao obter estatísticas do banco de dados:', error);

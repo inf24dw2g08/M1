@@ -278,3 +278,23 @@ module.exports = {
   refreshTokenExpiration,
   passport
 };
+
+exports.authenticateToken = (req, res, next) => {
+  const token = req.header('Authorization')?.split(' ')[1] || 
+                req.cookies?.jwt_token || 
+                req.query?.token;
+  
+  if (!token) return res.status(401).json({ error: 'Acesso negado. Token não fornecido.' });
+
+  try {
+    const verified = jwt.verify(token, jwtSecret);
+    req.user = verified;
+    
+    // Log detalhado do usuário autenticado
+    console.log(`[${new Date().toISOString()}] Usuário autenticado: ID=${verified.id}, Role=${verified.role}`);
+    
+    next();
+  } catch (err) {
+    res.status(403).json({ error: 'Token inválido ou expirado.' });
+  }
+};

@@ -44,7 +44,7 @@ const { safeHandler } = require('../utils/routeUtil'); // Ajuste o caminho para 
  *       403:
  *         description: Forbidden - Insufficient permissions
  */
-router.get('/', authenticateToken, authorizeRole(['admin']), 
+router.get('/', authenticateToken, 
   safeHandler(loanController.getAllLoans, 'Listagem de empréstimos não implementada'));
 
 /**

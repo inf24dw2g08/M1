@@ -1,68 +1,38 @@
-const app = require('./app');
-const db = require('./config/db.config');
+require('dotenv').config();
+const app = require('./src/app');
+const sequelize = require('./src/config/db.config');
+const Book = require('./src/models/bookModel');
 
 const PORT = process.env.PORT || 3000;
 
-// Inicializar banco de dados e servidor
-async function initServer() {
+(async function startServer() {
   try {
-    // Tentar conectar ao banco de dados
-    let dbConnected = false;
-    try {
-      // Conectar ao banco de dados
-      await db.query('SELECT 1');
-      console.log('Conexão com o banco de dados estabelecida!');
-      dbConnected = true;
-      
-      // Popular banco de dados se necessário
-      if (dbConnected) {
-        const seedDatabase = require('./config/seed.js');
-        await seedDatabase();
-      }
-    } catch (dbError) {
-      console.error('Aviso: Não foi possível conectar ao banco de dados:', dbError.message);
-      console.log('A aplicação será iniciada sem funcionalidades de banco de dados');
+    console.log('Conectando ao banco de dados...');
+    await sequelize.authenticate();
+    console.log('Conexão estabelecida com sucesso!');
+    
+    // Sincronizar modelos
+    await sequelize.sync({ alter: true });
+    console.log('Modelos sincronizados com banco de dados');
+    
+    // Verificar se existem livros
+    const count = await Book.count();
+    if (count === 0) {
+      console.log('Inserindo livros de exemplo...');
+      await Book.bulkCreate([
+        { title: 'Dom Quixote', author: 'Miguel de Cervantes', published_year: 1605 },
+        { title: 'Os Lusíadas', author: 'Luís de Camões', published_year: 1572 },
+        { title: 'O Príncipe', author: 'Maquiavel', published_year: 1532 }
+      ]);
+      console.log('Livros inseridos com sucesso!');
     }
     
-    // Iniciar servidor e manter o processo rodando
-    const server = app.listen(PORT, () => {
-      console.log(`Servidor rodando na porta ${PORT}`);
-      if (!dbConnected) {
-        console.log('AVISO: Aplicação em modo limitado - Banco de dados não disponível');
-      }
-    });
-    
-    // Manter o processo rodando mesmo se houver erros
-    setInterval(() => {
-      console.log('Servidor em execução...');
-    }, 3600000); // Log a cada hora para manter vivo
-    
-    // Tratar erros para prevenir finalização do processo
-    server.on('error', (error) => {
-      console.error('Erro no servidor:', error);
+    app.listen(PORT, () => {
+      console.log(`Servidor rodando em http://localhost:${PORT}`);
+      console.log(`Documentação da API disponível em http://localhost:${PORT}/api-docs`);
     });
   } catch (error) {
-    console.error('Erro ao inicializar servidor:', error);
-    // Não finalizar o processo mesmo com erro
-    console.log('Tentando manter o servidor rodando apesar do erro...');
-    setInterval(() => {}, 3600000); // Manter o processo vivo
+    console.error('Erro na inicialização:', error);
+    process.exit(1);
   }
-}
-
-// Prevenir que erros não tratados derrubem a aplicação
-process.on('uncaughtException', (error) => {
-  console.error('Erro não tratado:', error);
-  // Não finalizar o processo
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Promessa rejeitada não tratada:', reason);
-  // Não finalizar o processo
-});
-
-// Iniciar o servidor
-initServer().catch(error => {
-  console.error('Erro ao iniciar servidor:', error);
-  // Manter o processo vivo mesmo com erro de inicialização
-  setInterval(() => {}, 3600000);
-});
+})();

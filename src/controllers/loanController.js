@@ -5,155 +5,77 @@ const User = require('../models/userModel');
 
 exports.getAllLoans = async (req, res, next) => {
   try {
-    const filters = {
-      user_id: req.query.user_id,
-      book_id: req.query.book_id,
-      status: req.query.status,
-      sort: req.query.sort || 'loan_date',
-      direction: req.query.direction || 'DESC'
+    // Apenas admin pode ver todos os empréstimos
+    const isAdmin = req.user.role === 'admin';
+    
+    const options = {
+      include: [Book],
+      order: [['loan_date', 'DESC']]
     };
     
-    const loans = await Loan.getAll(filters);
+    // Usuários comuns só podem ver seus próprios empréstimos
+    if (!isAdmin) {
+      options.where = { user_id: req.user.id };
+    }
+    
+    const loans = await Loan.findAll(options);
     res.json(loans);
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
 exports.getLoanById = async (req, res, next) => {
   try {
-    const loan = await Loan.findById(req.params.id);
+    const loan = await Loan.findByPk(req.params.id, { include: [Book] });
     
-    if (!loan) {
-      return res.status(404).json({ message: 'Loan not found' });
+    if (!loan) return res.status(404).json({ error: 'Empréstimo não encontrado' });
+    
+    // Verificar se o usuário tem permissão para ver este empréstimo
+    const isAdmin = req.user.role === 'admin';
+    const isOwner = req.user.id === loan.user_id;
+    
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({ error: 'Você não tem permissão para acessar este empréstimo' });
     }
     
     res.json(loan);
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
 exports.createLoan = async (req, res, next) => {
   try {
-    const { user_id, book_id, due_date } = req.body;
-    
-    // Validação básica
-    if (!user_id || !book_id || !due_date) {
-      return res.status(400).json({ message: 'User ID, Book ID and Due Date are required' });
-    }
-    
-    // Verificar se o utilizador existe
-    const user = await User.findById(user_id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    
-    // Verificar se o livro existe
-    const book = await Book.findById(book_id);
-    if (!book) {
-      return res.status(404).json({ message: 'Book not found' });
-    }
-    
-    // Verificar se o livro está disponível
-    if (!book.available) {
-      return res.status(400).json({ message: 'Book is not available for loan' });
-    }
-    
-    // Criar o empréstimo
-    try {
-      const loanId = await Loan.create({
-        user_id,
-        book_id,
-        due_date
-      });
-      
-      res.status(201).json({ 
-        message: 'Loan created successfully',
-        loanId 
-      });
-    } catch (error) {
-      if (error.message.includes('not available')) {
-        return res.status(400).json({ message: error.message });
-      }
-      throw error;
-    }
-  } catch (error) {
-    next(error);
-  }
-};
-
-exports.returnBook = async (req, res, next) => {
-  try {
-    const loanId = req.params.id;
-    
-    // Verificar se o empréstimo existe
-    const loan = await Loan.findById(loanId);
-    if (!loan) {
-      return res.status(404).json({ message: 'Loan not found' });
-    }
-    
-    // Verificar se o livro já foi devolvido
-    if (loan.status === 'returned') {
-      return res.status(400).json({ message: 'Book has already been returned' });
-    }
-    
-    // Devolver o livro
-    const result = await Loan.returnBook(loanId);
-    
-    if (result) {
-      res.json({ message: 'Book returned successfully' });
-    } else {
-      res.status(400).json({ message: 'Failed to return book' });
-    }
-  } catch (error) {
-    next(error);
+    const loan = await Loan.create({
+      user_id: req.user.id,  // assumindo req.user do auth
+      book_id: req.body.book_id,
+      due_date: req.body.due_date
+    });
+    res.status(201).json(loan);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 };
 
 exports.updateLoan = async (req, res, next) => {
   try {
-    const loanId = req.params.id;
-    
-    // Verificar se o empréstimo existe
-    const loan = await Loan.findById(loanId);
-    if (!loan) {
-      return res.status(404).json({ message: 'Loan not found' });
-    }
-    
-    // Atualizar o empréstimo
-    const result = await Loan.update(loanId, req.body);
-    
-    if (result) {
-      res.json({ message: 'Loan updated successfully' });
-    } else {
-      res.status(400).json({ message: 'Failed to update loan' });
-    }
-  } catch (error) {
-    next(error);
+    const loan = await Loan.findByPk(req.params.id);
+    if (!loan) return res.status(404).json({ error: 'Empréstimo não encontrado' });
+    await loan.update(req.body);
+    res.json(loan);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 };
 
 exports.deleteLoan = async (req, res, next) => {
   try {
-    const loanId = req.params.id;
-    
-    // Verificar se o empréstimo existe
-    const loan = await Loan.findById(loanId);
-    if (!loan) {
-      return res.status(404).json({ message: 'Loan not found' });
-    }
-    
-    // Apagar o empréstimo
-    const result = await Loan.delete(loanId);
-    
-    if (result) {
-      res.json({ message: 'Loan deleted successfully' });
-    } else {
-      res.status(400).json({ message: 'Failed to delete loan' });
-    }
-  } catch (error) {
-    next(error);
+    const rows = await Loan.destroy({ where: { id: req.params.id } });
+    if (!rows) return res.status(404).json({ error: 'Empréstimo não encontrado' });
+    res.status(204).end();
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 

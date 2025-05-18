@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const bcrypt = require("bcryptjs");
-const db = require('../config/db.config');
-const { jwtSecret, passport } = require('../middleware/auth');
+const User = require('../models/userModel');
+const { jwtSecret, jwtExpiration, refreshTokenExpiration } = require('../middleware/auth');
 const oauthConfig = require('../config/oauth.config');
 const googleOAuthConfig = require('../config/google-oauth.config');
 // Para versões do Node.js menores que 18
@@ -18,214 +18,26 @@ const validateClient = (clientId, clientSecret) => {
 // Endpoint para obter token (OAuth 2.0 - Resource Owner Password Credentials Grant)
 router.post('/token', async (req, res) => {
   try {
-    const { grant_type, username, password, client_id, client_secret, scope } = req.body;
-    
-    // Validar cliente
-    const client = validateClient(client_id, client_secret);
-    if (!client) {
-      return res.status(401).json({
-        error: 'invalid_client',
-        error_description: 'Cliente inválido ou não autorizado'
-      });
-    }
-    
-    // Verificar tipo de grant
+    const { grant_type, username, password, refresh_token } = req.body;
     if (grant_type === 'password') {
-      // Verificar se o grant é permitido para este cliente
-      if (!client.grants.includes('password')) {
-        return res.status(400).json({
-          error: 'unauthorized_client',
-          error_description: 'O cliente não está autorizado para este tipo de grant'
-        });
+      const user = await User.findOne({ where: { username } });
+      if (!user || !(await bcrypt.compare(password, user.password))) {
+        return res.status(401).json({ error: 'Credenciais inválidas' });
       }
-      
-      // Autenticar usuário
-      const [users] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
-      
-      if (users.length === 0) {
-        return res.status(400).json({
-          error: 'invalid_grant',
-          error_description: 'Credenciais inválidas'
-        });
-      }
-      
-      const user = users[0];
-      
-      // Verificar senha
-      const validPassword = await bcrypt.compare(password, user.password);
-      if (!validPassword) {
-        return res.status(400).json({
-          error: 'invalid_grant',
-          error_description: 'Credenciais inválidas'
-        });
-      }
-      
-      // Validar escopo
-      const requestedScopes = scope ? scope.split(' ') : ['read'];
-      const validScopes = requestedScopes.filter(s => 
-        oauthConfig.scopes.includes(s) && 
-        (s !== 'admin' || user.role === 'admin')
-      );
-      
-      if (requestedScopes.length > 0 && validScopes.length === 0) {
-        return res.status(400).json({
-          error: 'invalid_scope',
-          error_description: 'O escopo solicitado é inválido'
-        });
-      }
-      
-      // Gerar access token
-      const accessToken = jwt.sign(
-        { 
-          id: user.id, 
-          username: user.username, 
-          role: user.role,
-          scope: validScopes.join(' ')
-        },
-        jwtSecret,
-        { expiresIn: oauthConfig.accessTokenLifetime }
-      );
-      
-      // Gerar refresh token
-      const refreshToken = jwt.sign(
-        { 
-          id: user.id,
-          scope: validScopes.join(' ')
-        },
-        jwtSecret,
-        { expiresIn: oauthConfig.refreshTokenLifetime }
-      );
-      
-      // Armazenar refresh token no banco
-      await db.query(
-        'UPDATE users SET refresh_token = ? WHERE id = ?',
-        [refreshToken, user.id]
-      );
-      
-      // Log do usuário autenticado
-      console.log(`OAuth Token concedido para usuário: ID: ${user.id}, Username: ${user.username}, Role: ${user.role}, Scope: ${validScopes.join(' ')}`);
-      
-      // Responder em formato OAuth 2.0
-      return res.json({
-        access_token: accessToken,
-        token_type: 'Bearer',
-        expires_in: oauthConfig.accessTokenLifetime,
-        refresh_token: refreshToken,
-        scope: validScopes.join(' ')
-      });
-      
-    } else if (grant_type === 'refresh_token') {
-      // Verificar se o grant é permitido para este cliente
-      if (!client.grants.includes('refresh_token')) {
-        return res.status(400).json({
-          error: 'unauthorized_client',
-          error_description: 'O cliente não está autorizado para este tipo de grant'
-        });
-      }
-      
-      const { refresh_token } = req.body;
-      
-      if (!refresh_token) {
-        return res.status(400).json({
-          error: 'invalid_request',
-          error_description: 'Refresh token não fornecido'
-        });
-      }
-      
-      try {
-        // Verificar refresh token
-        const decoded = jwt.verify(refresh_token, jwtSecret);
-        
-        // Buscar usuário
-        const [users] = await db.query('SELECT * FROM users WHERE id = ?', [decoded.id]);
-        
-        if (users.length === 0 || users[0].refresh_token !== refresh_token) {
-          return res.status(400).json({
-            error: 'invalid_grant',
-            error_description: 'Refresh token inválido'
-          });
-        }
-        
-        const user = users[0];
-        
-        // Validar escopo
-        const requestedScopes = scope ? scope.split(' ') : decoded.scope.split(' ');
-        
-        // Verificar se os escopos solicitados estão contidos no escopo original
-        const originalScopes = decoded.scope.split(' ');
-        const validScopes = requestedScopes.filter(s => 
-          originalScopes.includes(s) && 
-          oauthConfig.scopes.includes(s) && 
-          (s !== 'admin' || user.role === 'admin')
-        );
-        
-        if (requestedScopes.length > 0 && validScopes.length === 0) {
-          return res.status(400).json({
-            error: 'invalid_scope',
-            error_description: 'O escopo solicitado é inválido'
-          });
-        }
-        
-        // Gerar novo access token
-        const accessToken = jwt.sign(
-          { 
-            id: user.id, 
-            username: user.username, 
-            role: user.role,
-            scope: validScopes.join(' ')
-          },
-          jwtSecret,
-          { expiresIn: oauthConfig.accessTokenLifetime }
-        );
-        
-        // Gerar novo refresh token
-        const newRefreshToken = jwt.sign(
-          { 
-            id: user.id,
-            scope: validScopes.join(' ')
-          },
-          jwtSecret,
-          { expiresIn: oauthConfig.refreshTokenLifetime }
-        );
-        
-        // Atualizar refresh token no banco
-        await db.query(
-          'UPDATE users SET refresh_token = ? WHERE id = ?',
-          [newRefreshToken, user.id]
-        );
-        
-        // Log do usuário que renovou o token
-        console.log(`OAuth Token renovado para usuário: ID: ${user.id}, Username: ${user.username}, Role: ${user.role}, Scope: ${validScopes.join(' ')}`);
-        
-        // Responder em formato OAuth 2.0
-        return res.json({
-          access_token: accessToken,
-          token_type: 'Bearer',
-          expires_in: oauthConfig.accessTokenLifetime,
-          refresh_token: newRefreshToken,
-          scope: validScopes.join(' ')
-        });
-        
-      } catch (error) {
-        return res.status(400).json({
-          error: 'invalid_grant',
-          error_description: 'Refresh token inválido ou expirado'
-        });
-      }
-      
-    } else {
-      return res.status(400).json({
-        error: 'unsupported_grant_type',
-        error_description: 'Tipo de grant não suportado'
-      });
+      const accessToken = jwt.sign({ id: user.id, role: user.role }, jwtSecret, { expiresIn: jwtExpiration });
+      const newRefresh = jwt.sign({ id: user.id }, jwtSecret, { expiresIn: refreshTokenExpiration });
+      await user.update({ refresh_token: newRefresh });
+      return res.json({ access_token: accessToken, refresh_token: newRefresh });
     }
-    
-  } catch (error) {
-    console.error('Erro ao processar requisição OAuth:', error);
-    return res.status(500).json({
-      error: 'server_error',
-      error_description: 'Erro interno do servidor'
-    });
+    if (grant_type === 'refresh_token') {
+      const user = await User.findOne({ where: { refresh_token } });
+      if (!user) return res.status(401).json({ error: 'Refresh token inválido' });
+      const accessToken = jwt.sign({ id: user.id, role: user.role }, jwtSecret, { expiresIn: jwtExpiration });
+      return res.json({ access_token: accessToken });
+    }
+    res.status(400).json({ error: 'grant_type inválido' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -377,79 +189,53 @@ router.get('/google/callback', async (req, res) => {
       name: userData.name
     });
     
-    // Verificar se o usuário já existe no banco
-    const [users] = await db.query(
-      'SELECT * FROM users WHERE email = ?',
-      [userData.email]
-    );
+    // Verificar se o usuário já existe
+    let user = await User.findOne({ where: { email: userData.email } });
     
-    let user;
-    
-    // Criar ou atualizar usuário
-    if (users.length === 0) {
-      // Gerar senha aleatória (não será usada pelo usuário)
+    if (!user) {
+      // Gerar senha aleatória
       const randomPassword = Math.random().toString(36).slice(-10);
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(randomPassword, salt);
       
-      // Inserir novo usuário
-      const [result] = await db.query(
-        'INSERT INTO users (username, email, password, role, google_id) VALUES (?, ?, ?, ?, ?)',
-        [userData.name, userData.email, hashedPassword, 'user', userData.id]
-      );
-      
-      user = {
-        id: result.insertId,
+      // Criar novo usuário
+      user = await User.create({
         username: userData.name,
         email: userData.email,
-        role: 'user'
-      };
+        password: hashedPassword,
+        role: 'user',
+        google_id: userData.id,
+        external_auth: 'google'
+      });
     } else {
-      user = users[0];
-      
-      // Atualizar dados do Google se necessário
-      await db.query(
-        'UPDATE users SET google_id = ? WHERE id = ?',
-        [userData.id, user.id]
-      );
+      // Atualizar dados do Google
+      await user.update({
+        google_id: userData.id,
+        external_auth: 'google'
+      });
     }
     
-    // Gerar token JWT para nossa API
+    // Gerar tokens
     const accessToken = jwt.sign(
-      { 
-        id: user.id, 
-        username: user.username, 
-        role: user.role,
-        scope: 'read write',
-        auth_provider: 'google'
-      },
+      { id: user.id, username: user.username || user.email, role: user.role },
       jwtSecret,
-      { expiresIn: 3600 } // 1 hora
+      { expiresIn: 3600 }
     );
     
-    // Gerar refresh token
     const refreshToken = jwt.sign(
-      { 
-        id: user.id,
-        scope: 'read write',
-        auth_provider: 'google'
-      },
+      { id: user.id },
       jwtSecret,
-      { expiresIn: 86400 * 7 } // 7 dias
+      { expiresIn: 86400 * 7 }
     );
     
     // Salvar refresh token
-    await db.query(
-      'UPDATE users SET refresh_token = ? WHERE id = ?',
-      [refreshToken, user.id]
-    );
+    await user.update({ refresh_token: refreshToken });
     
-    // Redirecionar para a página principal com o token
-    res.redirect(`/?token=${accessToken}&refresh_token=${refreshToken}`);
-    
+    // Redirecionar com token
+    return res.redirect(`/books?token=${accessToken}`);
   } catch (error) {
     console.error('Erro ao processar callback do Google:', error);
-    res.redirect('/login?error=callback_error');
+    return res.redirect('/login?error=callback_error');
   }
 });
 

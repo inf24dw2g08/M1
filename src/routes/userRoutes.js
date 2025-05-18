@@ -75,13 +75,7 @@ router.post('/register', userController.registerUser);
  *       403:
  *         description: Proibido - Acesso negado
  */
-router.get('/', (req, res, next) => {
-  authenticateToken(['admin'])(req, res, () => {
-    authorizeRole(['admin'])(req, res, () => {
-      userController.getAllUsers(req, res);
-    });
-  });
-});
+router.get('/', authenticateToken, authorizeRole(['admin']), userController.getAllUsers);
 
 /**
  * @swagger
@@ -122,13 +116,7 @@ router.get('/', (req, res, next) => {
  *       403:
  *         description: Proibido - Acesso negado
  */
-router.post('/', (req, res, next) => {
-  authenticateToken(['admin'])(req, res, () => {
-    authorizeRole(['admin'])(req, res, () => {
-      userController.createUser(req, res);
-    });
-  });
-});
+router.post('/', authenticateToken(), authorizeRole(['admin']), userController.createUser);
 
 /**
  * @swagger
@@ -159,13 +147,7 @@ router.post('/', (req, res, next) => {
  *       404:
  *         description: Usuário não encontrado
  */
-router.get('/:id', (req, res, next) => {
-  authenticateToken(['read'])(req, res, () => {
-    isResourceOwner('user')(req, res, () => {
-      userController.getUserById(req, res);
-    });
-  });
-});
+router.get('/:id', authenticateToken, userController.getUserById);
 
 /**
  * @swagger
@@ -206,13 +188,7 @@ router.get('/:id', (req, res, next) => {
  *       404:
  *         description: Usuário não encontrado
  */
-router.put('/:id', (req, res, next) => {
-  authenticateToken(['write'])(req, res, () => {
-    isResourceOwner('user')(req, res, () => {
-      userController.updateUser(req, res);
-    });
-  });
-});
+router.put('/:id', authenticateToken, authorizeRole(['admin']), userController.updateUser);
 
 /**
  * @swagger
@@ -239,13 +215,7 @@ router.put('/:id', (req, res, next) => {
  *       404:
  *         description: Usuário não encontrado
  */
-router.delete('/:id', (req, res, next) => {
-  authenticateToken(['admin'])(req, res, () => {
-    authorizeRole(['admin'])(req, res, () => {
-      userController.deleteUser(req, res);
-    });
-  });
-});
+router.delete('/:id', authenticateToken(), authorizeRole(['admin']), userController.deleteUser);
 
 /**
  * @swagger
@@ -265,25 +235,7 @@ router.delete('/:id', (req, res, next) => {
  *       401:
  *         description: Não autorizado
  */
-router.get('/me', authenticateToken(), async (req, res) => {
-  try {
-    const userId = req.user.id;
-    
-    const [users] = await db.query(
-      'SELECT id, username, email, role, created_at, updated_at FROM users WHERE id = ?',
-      [userId]
-    );
-    
-    if (users.length === 0) {
-      return res.status(404).json({ message: 'Usuário não encontrado' });
-    }
-    
-    res.json(users[0]);
-  } catch (error) {
-    console.error('Erro ao buscar perfil do usuário:', error);
-    res.status(500).json({ message: 'Erro ao buscar perfil do usuário' });
-  }
-});
+router.get('/me', authenticateToken(), userController.getProfile);
 
 /**
  * @swagger
@@ -318,59 +270,6 @@ router.get('/me', authenticateToken(), async (req, res) => {
  *       401:
  *         description: Não autorizado
  */
-router.put('/me', authenticateToken(), async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { username, email, password } = req.body;
-    
-    // Verificar se o usuário existe
-    const [users] = await db.query(
-      'SELECT * FROM users WHERE id = ?',
-      [userId]
-    );
-    
-    if (users.length === 0) {
-      return res.status(404).json({ message: 'Usuário não encontrado' });
-    }
-    
-    // Preparar dados para atualização
-    const updates = {};
-    if (username) updates.username = username;
-    if (email) updates.email = email;
-    
-    if (password) {
-      const salt = await bcrypt.genSalt(10);
-      updates.password = await bcrypt.hash(password, salt);
-    }
-    
-    if (Object.keys(updates).length === 0) {
-      return res.status(400).json({ message: 'Nenhum dado fornecido para atualização' });
-    }
-    
-    // Construir query de atualização
-    const fields = Object.keys(updates).map(key => `${key} = ?`).join(', ');
-    const values = Object.values(updates);
-    
-    // Adicionar ID ao final dos valores
-    values.push(userId);
-    
-    // Executar atualização
-    await db.query(
-      `UPDATE users SET ${fields} WHERE id = ?`,
-      values
-    );
-    
-    // Buscar usuário atualizado
-    const [updatedUsers] = await db.query(
-      'SELECT id, username, email, role, created_at, updated_at FROM users WHERE id = ?',
-      [userId]
-    );
-    
-    res.json(updatedUsers[0]);
-  } catch (error) {
-    console.error('Erro ao atualizar perfil do usuário:', error);
-    res.status(500).json({ message: 'Erro ao atualizar perfil do usuário' });
-  }
-});
+router.put('/me', authenticateToken(), userController.updateProfile);
 
 module.exports = router;

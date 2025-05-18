@@ -1,198 +1,107 @@
-const db = require('../config/db.config');
-const bcrypt = require("bcryptjs");
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const User = require('../models/userModel');
 
-// Obter todos os usuários
+// listar todos usuários
 const getAllUsers = async (req, res) => {
   try {
-    const [users] = await db.query(
-      'SELECT id, username, email, role, created_at, updated_at FROM users'
-    );
+    const users = await User.findAll();
     res.json(users);
-  } catch (error) {
-    console.error('Erro ao buscar usuários:', error);
-    res.status(500).json({ message: 'Erro ao buscar usuários' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
-// Obter usuário por ID
+// obter um usuário por ID
 const getUserById = async (req, res) => {
   try {
-    const userId = req.params.id;
-    const [users] = await db.query(
-      'SELECT id, username, email, role, created_at, updated_at FROM users WHERE id = ?',
-      [userId]
-    );
-    
-    if (users.length === 0) {
-      return res.status(404).json({ message: 'Usuário não encontrado' });
-    }
-    
-    res.json(users[0]);
-  } catch (error) {
-    console.error('Erro ao buscar usuário:', error);
-    res.status(500).json({ message: 'Erro ao buscar usuário' });
+    const user = await User.findByPk(req.params.id);
+    if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
-// Criar um novo usuário
+// criar usuário (admin)
 const createUser = async (req, res) => {
   try {
-    const { username, email, password, role } = req.body;
-    
-    // Validar dados
-    if (!username || !email || !password) {
-      return res.status(400).json({ message: 'Todos os campos são obrigatórios' });
-    }
-    
-    // Verificar se usuário já existe
-    const [existingUsers] = await db.query(
-      'SELECT * FROM users WHERE username = ? OR email = ?',
-      [username, email]
-    );
-    
-    if (existingUsers.length > 0) {
-      return res.status(400).json({ message: 'Nome de usuário ou email já está em uso' });
-    }
-    
-    // Hash da senha
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-    
-    // Inserir usuário
-    const [result] = await db.query(
-      'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
-      [username, email, hashedPassword, role || 'user']
-    );
-    
-    res.status(201).json({
-      id: result.insertId,
-      username,
-      email,
-      role: role || 'user'
-    });
-  } catch (error) {
-    console.error('Erro ao criar usuário:', error);
-    res.status(500).json({ message: 'Erro ao criar usuário' });
+    const hash = await bcrypt.hash(req.body.password, salt);
+    const newUser = await User.create({ ...req.body, password: hash });
+    res.status(201).json(newUser);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 };
 
-// Atualizar usuário
+// atualizar usuário (admin ou dono via middleware)
 const updateUser = async (req, res) => {
   try {
-    const userId = req.params.id;
-    const { email, password } = req.body;
-    
-    // Verificar se usuário existe
-    const [users] = await db.query(
-      'SELECT * FROM users WHERE id = ?',
-      [userId]
-    );
-    
-    if (users.length === 0) {
-      return res.status(404).json({ message: 'Usuário não encontrado' });
-    }
-    
-    // Preparar dados para atualização
-    const updates = {};
-    
-    if (email) updates.email = email;
-    
-    if (password) {
+    const user = await User.findByPk(req.params.id);
+    if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+    if (req.body.password) {
       const salt = await bcrypt.genSalt(10);
-      updates.password = await bcrypt.hash(password, salt);
+      req.body.password = await bcrypt.hash(req.body.password, salt);
     }
-    
-    if (Object.keys(updates).length === 0) {
-      return res.status(400).json({ message: 'Nenhum dado fornecido para atualização' });
-    }
-    
-    // Construir query de atualização
-    const fields = Object.keys(updates).map(key => `${key} = ?`).join(', ');
-    const values = Object.values(updates);
-    
-    // Adicionar ID ao final dos valores
-    values.push(userId);
-    
-    // Executar atualização
-    await db.query(
-      `UPDATE users SET ${fields} WHERE id = ?`,
-      values
-    );
-    
-    res.json({ message: 'Usuário atualizado com sucesso' });
-  } catch (error) {
-    console.error('Erro ao atualizar usuário:', error);
-    res.status(500).json({ message: 'Erro ao atualizar usuário' });
+    await user.update(req.body);
+    res.json(user);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 };
 
-// Excluir usuário
+// excluir usuário (admin)
 const deleteUser = async (req, res) => {
   try {
-    const userId = req.params.id;
-    
-    // Verificar se usuário existe
-    const [users] = await db.query(
-      'SELECT * FROM users WHERE id = ?',
-      [userId]
-    );
-    
-    if (users.length === 0) {
-      return res.status(404).json({ message: 'Usuário não encontrado' });
-    }
-    
-    // Excluir empréstimos do usuário primeiro (integridade referencial)
-    await db.query('DELETE FROM loans WHERE user_id = ?', [userId]);
-    
-    // Excluir usuário
-    await db.query('DELETE FROM users WHERE id = ?', [userId]);
-    
-    res.json({ message: 'Usuário excluído com sucesso' });
-  } catch (error) {
-    console.error('Erro ao excluir usuário:', error);
-    res.status(500).json({ message: 'Erro ao excluir usuário' });
+    const rows = await User.destroy({ where: { id: req.params.id } });
+    if (!rows) return res.status(404).json({ error: 'Usuário não encontrado' });
+    res.status(204).end();
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
-// Registrar novo usuário (rota pública)
+// registrar novo usuário (rota pública)
 const registerUser = async (req, res) => {
   try {
     const { username, email, password } = req.body;
-    
-    // Validar dados
-    if (!username || !email || !password) {
-      return res.status(400).json({ message: 'Todos os campos são obrigatórios' });
-    }
-    
-    // Verificar se usuário já existe
-    const [existingUsers] = await db.query(
-      'SELECT * FROM users WHERE username = ? OR email = ?',
-      [username, email]
-    );
-    
-    if (existingUsers.length > 0) {
-      return res.status(400).json({ message: 'Nome de usuário ou email já está em uso' });
-    }
-    
-    // Hash da senha
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-    
-    // Inserir usuário com role 'user'
-    const [result] = await db.query(
-      'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
-      [username, email, hashedPassword, 'user']
-    );
-    
-    res.status(201).json({
-      id: result.insertId,
-      username,
-      email,
-      role: 'user'
-    });
+    if (!username||!email||!password) return res.status(400).json({ message: 'Campos obrigatórios faltando' });
+    const exists = await User.findOne({ where: { [User.sequelize.Op.or]: [{username},{email}] } });
+    if (exists) return res.status(400).json({ message: 'Username ou email já em uso' });
+    const hashed = await bcrypt.hash(password, 10);
+    const user = await User.create({ username, email, password: hashed, role:'user' });
+    res.status(201).json(user);
   } catch (error) {
     console.error('Erro ao registrar usuário:', error);
     res.status(500).json({ message: 'Erro ao registrar usuário' });
+  }
+};
+
+// perfil do usuário autenticado
+const getProfile = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id, { attributes: ['id','username','email','role','createdAt','updatedAt'] });
+    res.json(user);
+  } catch (error) {
+    console.error('Erro ao buscar perfil:', error);
+    res.status(500).json({ message: 'Erro ao buscar perfil' });
+  }
+};
+
+// atualizar perfil do usuário autenticado
+const updateProfile = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    const { username, email, password } = req.body;
+    if (username) user.username = username;
+    if (email) user.email = email;
+    if (password) user.password = await bcrypt.hash(password, 10);
+    await user.save();
+    res.json(user);
+  } catch (error) {
+    console.error('Erro ao atualizar perfil:', error);
+    res.status(500).json({ message: 'Erro ao atualizar perfil' });
   }
 };
 
@@ -202,5 +111,7 @@ module.exports = {
   createUser,
   updateUser,
   deleteUser,
-  registerUser
+  registerUser,
+  getProfile,
+  updateProfile
 };
