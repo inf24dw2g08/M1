@@ -217,7 +217,7 @@ router.get('/google/callback', async (req, res) => {
     
     // Gerar tokens
     const accessToken = jwt.sign(
-      { id: user.id, username: user.username || user.email, role: user.role },
+      { id: user.id, username: user.username, email: user.email, role: user.role },
       jwtSecret,
       { expiresIn: 3600 }
     );
@@ -232,7 +232,7 @@ router.get('/google/callback', async (req, res) => {
     await user.update({ refresh_token: refreshToken });
     
     // Redirecionar com token
-    return res.redirect(`/books?token=${accessToken}`);
+    return res.redirect(`/dashboard?token=${accessToken}`);
   } catch (error) {
     console.error('Erro ao processar callback do Google:', error);
     return res.redirect('/login?error=callback_error');
