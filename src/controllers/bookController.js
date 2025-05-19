@@ -38,20 +38,21 @@ exports.getBookById = async (req, res) => {
 
 exports.createBook = async (req, res, next) => {
   try {
-    const { title, author, isbn, publication_year, genre, description } = req.body;
-    
-    // Validação básica
+    // extrai somente os campos válidos
+    const { title, author, isbn, published_year, quantity, available } = req.body;
     if (!title || !author) {
       return res.status(400).json({ message: 'Title and author are required' });
     }
-    
-    // Criar o livro
-    const newBook = await Book.create(req.body);
-    
-    res.status(201).json({ 
-      message: 'Book created successfully',
-      bookId: newBook.id 
+    const newBook = await Book.create({
+      title,
+      author,
+      isbn,
+      published_year,
+      quantity: quantity ?? 1,
+      available: available ?? true
     });
+    // retorna o objeto criado
+    return res.status(201).json(newBook);
   } catch (error) {
     next(error);
   }

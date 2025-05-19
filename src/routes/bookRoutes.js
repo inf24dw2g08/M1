@@ -4,101 +4,79 @@ const router = express.Router();
 const bookController = require('../controllers/bookController');
 const Book = require('../models/bookModel');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
-const jwt = require('jsonwebtoken');
-const { jwtSecret } = require('../middleware/auth');
 
-// Rota UI para listar livros
+// middleware para processar forms
+router.use(express.urlencoded({ extended: true }));
+
+// UI: listar livros e criar/atualizar/excluir via formulários
 router.get('/books', async (req, res) => {
-  try {
-    const books = await Book.findAll();
-    
-    // Verifique o tipo de solicitação para determinar resposta
-    if (req.headers.accept && req.headers.accept.includes('text/html')) {
-      // Retornar página HTML simples com lista de livros
-      let html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Biblioteca - Livros</title>
-          <style>
-            body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
-            th { background-color: #f2f2f2; }
-            .button { background: #4CAF50; color: white; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; }
-          </style>
-        </head>
-        <body>
-          <h1>Biblioteca - Livros Disponíveis</h1>
-          
-          <table>
-            <tr>
-              <th>Título</th>
-              <th>Autor</th>
-              <th>Ano</th>
-              <th>Ações</th>
-            </tr>
-      `;
-      
-      books.forEach(book => {
-        html += `
-            <tr>
-              <td>${book.title}</td>
-              <td>${book.author}</td>
-              <td>${book.published_year}</td>
-              <td>
-                <a href="/api/books/${book.id}">Detalhes</a>
-                <button class="button" onclick="emprestar(${book.id})">Emprestar</button>
-              </td>
-            </tr>
-        `;
-      });
-      
-      html += `
-          </table>
-          
-          <script>
-            function emprestar(bookId) {
-              fetch('/api/loans', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                  book_id: bookId,
-                  due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-                })
-              })
-              .then(response => {
-                if (response.ok) {
-                  alert('Livro emprestado com sucesso!');
-                } else {
-                  alert('Erro ao emprestar livro. Faça login primeiro.');
-                  window.location.href = '/login';
-                }
-              });
-            }
-          </script>
-        </body>
-        </html>
-      `;
-      
-      res.send(html);
-    } else {
-      // Retornar JSON para solicitações de API
-      res.json(books);
-    }
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erro ao listar livros: ' + err.message });
-  }
+  const books = await Book.findAll({ order: [['title','ASC']] });
+  res.send(`
+    <!DOCTYPE html><html><head><meta charset="UTF-8"><title>Livros</title></head><body>
+      <h1>Livros</h1>
+      <form id="createForm">
+        <input name="title" placeholder="Título" required>
+        <input name="author" placeholder="Autor" required>
+        <button type="submit">Criar Livro</button>
+      </form>
+      <ul>
+        ${books.map(b=>`
+          <li>
+            ${b.id} - ${b.title} by ${b.author}
+            <form action="/books/update/${b.id}" method="post" style="display:inline">
+              <input name="title" value="${b.title}" required>
+              <input name="author" value="${b.author}" required>
+              <button>Atualizar</button>
+            </form>
+            <form action="/books/delete/${b.id}" method="post" style="display:inline">
+              <button>Excluir</button>
+            </form>
+          </li>
+        `).join('')}
+      </ul>
+      <script>
+        document.getElementById('createForm').addEventListener('submit', async e => {
+          e.preventDefault();
+          const data = Object.fromEntries(new FormData(e.target));
+          const res = await fetch('/api/books', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          if (res.ok) location.reload();
+          else alert('Erro: ' + (await res.text()));
+        });
+      </script>
+    </body></html>
+  `);
+});
+
+// criar via UI
+router.post('/books', async (req, res) => {
+  await Book.create({ title: req.body.title, author: req.body.author });
+  res.redirect('/books');
+});
+
+// atualizar via UI
+router.post('/books/update/:id', async (req, res) => {
+  await Book.update(
+    { title: req.body.title, author: req.body.author },
+    { where: { id: req.params.id } }
+  );
+  res.redirect('/books');
+});
+
+// excluir via UI
+router.post('/books/delete/:id', async (req, res) => {
+  await Book.destroy({ where: { id: req.params.id } });
+  res.redirect('/books');
 });
 
 // API Endpoints
-router.get('/api', bookController.getAllBooks);
-router.get('/api/:id', bookController.getBookById);
-router.post('/api', authenticateToken, authorizeRole(['admin']), bookController.createBook);
-router.put('/api/:id', authenticateToken, authorizeRole(['admin']), bookController.updateBook);
-router.delete('/api/:id', authenticateToken, authorizeRole(['admin']), bookController.deleteBook);
+router.get('/', bookController.getAllBooks);
+router.get('/:id', bookController.getBookById);
+router.post('/', authenticateToken, authorizeRole(['admin']), bookController.createBook);
+router.put('/:id', authenticateToken, authorizeRole(['admin']), bookController.updateBook);
+router.delete('/:id', authenticateToken, authorizeRole(['admin']), bookController.deleteBook);
 
 module.exports = router;

@@ -1,24 +1,56 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
-const { authenticateToken, authorizeRole, isResourceOwner } = require('../middleware/auth');
+const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
-// Verificar se o controlador existe e tem os métodos necessários
-if (!userController || typeof userController.registerUser !== 'function') {
-  // Se registerUser não existir, criar uma função temporária
-  userController.registerUser = (req, res) => {
-    res.status(501).json({ message: 'Funcionalidade não implementada' });
-  };
-}
+// processar forms
+router.use(express.urlencoded({ extended: true }));
 
-// Garantir que todos os métodos necessários existam
-const methods = ['getAllUsers', 'getUserById', 'createUser', 'updateUser', 'deleteUser'];
-methods.forEach(method => {
-  if (typeof userController[method] !== 'function') {
-    userController[method] = (req, res) => {
-      res.status(501).json({ message: `Método ${method} não implementado` });
-    };
-  }
+// UI: Listar, criar, editar e excluir usuários
+router.get('/users', async (req, res) => {
+  const users = await userController.getAllUsers({ json: true }); // retorna array
+  const list = users.map(u => `
+    <li data-id="${u.id}">
+      ${u.id} - ${u.username} (${u.email})
+      <form action="/users/update/${u.id}" method="post" style="display:inline">
+        <input name="username" value="${u.username}" required>
+        <input name="email" value="${u.email}" required>
+        <button>Atualizar</button>
+      </form>
+      <form action="/users/delete/${u.id}" method="post" style="display:inline">
+        <button>Excluir</button>
+      </form>
+    </li>
+  `).join('');
+  res.send(`
+    <h1>Usuários</h1>
+    <form action="/api/users" method="post">
+      <input name="username" placeholder="Username" required>
+      <input name="email" placeholder="Email" required>
+      <input name="password" type="password" placeholder="Senha" required>
+      <select name="role"><option>user</option><option>admin</option></select>
+      <button type="submit">Criar</button>
+    </form>
+    <ul>${list}</ul>
+  `);
+});
+
+// criar via UI
+router.post('/users', async (req, res) => {
+  await userController.createUser({ body: req.body, json: true });
+  res.redirect('/users');
+});
+
+// atualizar via UI
+router.post('/users/update/:id', async (req, res) => {
+  await userController.updateUser({ params: req.params, body: req.body, json: true });
+  res.redirect('/users');
+});
+
+// excluir via UI
+router.post('/users/delete/:id', async (req, res) => {
+  await userController.deleteUser({ params: req.params, json: true });
+  res.redirect('/users');
 });
 
 /**

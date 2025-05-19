@@ -5,6 +5,43 @@ const loanController = require('../controllers/loanController');
 const { authenticateToken, authorizeRole, isResourceOwner } = require('../middleware/auth');
 const { safeHandler } = require('../utils/routeUtil'); // Ajuste o caminho para apontar para o routeUtil.js na pasta raiz/utils
 
+// processar forms
+router.use(express.urlencoded({ extended: true }));
+
+// UI: Listar, criar e excluir empréstimos
+router.get('/loans', async (req, res) => {
+  const loans = await loanController.getAllLoans({ json: true });
+  const list = loans.map(l => `
+    <li data-id="${l.id}">
+      Empréstimo ${l.id}: user=${l.user_id}, book=${l.book_id}, due=${l.due_date}
+      <form action="/loans/delete/${l.id}" method="post" style="display:inline">
+        <button>Excluir</button>
+      </form>
+    </li>
+  `).join('');
+  res.send(`
+    <h1>Empréstimos</h1>
+    <form action="/loans" method="post">
+      <input name="book_id" placeholder="ID do Livro" required>
+      <input name="due_date" type="date" required>
+      <button type="submit">Criar</button>
+    </form>
+    <ul>${list}</ul>
+  `);
+});
+
+// criar via UI
+router.post('/loans', async (req, res) => {
+  await loanController.createLoan({ body: req.body, user: { id: req.body.user_id || req.user.id }, json: true });
+  res.redirect('/loans');
+});
+
+// excluir via UI
+router.post('/loans/delete/:id', async (req, res) => {
+  await loanController.deleteLoan({ params: req.params, json: true });
+  res.redirect('/loans');
+});
+
 /**
  * @swagger
  * /api/loans:

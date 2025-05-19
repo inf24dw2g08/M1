@@ -2,13 +2,13 @@
   "openapi": "3.0.0",
   "info": {
     "title": "Biblioteca API",
-    "description": "API de gerenciamento de biblioteca com OAuth2",
+    "description": "API RESTful de Biblioteca com OAuth2 e Sequelize",
     "version": "1.0.0"
   },
   "servers": [
     {
-      "url": "http://localhost:3000/api",
-      "description": "Servidor de desenvolvimento"
+      "url": "http://localhost:3000",
+      "description": "Servidor local"
     }
   ],
   "components": {
@@ -17,15 +17,6 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT"
-      },
-      "oauth2": {
-        "type": "oauth2",
-        "flows": {
-          "password": {
-            "tokenUrl": "/oauth/token",
-            "scopes": {}
-          }
-        }
       }
     },
     "schemas": {
@@ -39,7 +30,8 @@
           "published_year": { "type": "integer" },
           "quantity": { "type": "integer" },
           "available": { "type": "boolean" }
-        }
+        },
+        "required": ["title","author"]
       },
       "User": {
         "type": "object",
@@ -47,8 +39,10 @@
           "id": { "type": "integer" },
           "username": { "type": "string" },
           "email": { "type": "string" },
-          "role": { "type": "string", "enum": ["admin", "user"] }
-        }
+          "password": { "type": "string" },
+          "role": { "type": "string", "enum": ["admin","user"] }
+        },
+        "required": ["username","email","password"]
       },
       "Loan": {
         "type": "object",
@@ -59,8 +53,9 @@
           "loan_date": { "type": "string", "format": "date-time" },
           "due_date": { "type": "string", "format": "date-time" },
           "return_date": { "type": "string", "format": "date-time" },
-          "status": { "type": "string", "enum": ["active", "returned", "overdue"] }
-        }
+          "status": { "type": "string", "enum": ["active","returned","overdue"] }
+        },
+        "required": ["book_id","due_date"]
       }
     }
   },
@@ -68,161 +63,221 @@
     { "bearerAuth": [] }
   ],
   "paths": {
-    "/books": {
+    "/api/books": {
       "get": {
         "summary": "Lista todos os livros",
         "responses": {
           "200": {
             "description": "Lista de livros",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/Book" }
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Book" } } } }
           }
         }
       },
       "post": {
-        "summary": "Adiciona um novo livro",
-        "security": [{ "bearerAuth": [] }],
+        "summary": "Cria um novo livro",
+        "security": [ { "bearerAuth": [] } ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/Book" }
+              "schema": { "$ref": "#/components/schemas/Book" },
+              "example": {
+                "title": "Meu Livro",
+                "author": "Autor Exemplo",
+                "isbn": "1234567890",
+                "published_year": 2025,
+                "quantity": 3,
+                "available": true
+              }
             }
           }
         },
         "responses": {
-          "201": {
-            "description": "Livro criado"
-          },
-          "401": {
-            "description": "Não autorizado"
-          }
+          "201": { "description": "Livro criado com sucesso" },
+          "400": { "description": "Dados inválidos" },
+          "401": { "description": "Não autorizado" }
         }
       }
     },
-    "/books/{id}": {
+    "/api/books/{id}": {
       "parameters": [
-        {
-          "name": "id",
-          "in": "path",
-          "required": true,
-          "schema": { "type": "integer" }
-        }
+        { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
       ],
       "get": {
-        "summary": "Busca um livro pelo ID",
+        "summary": "Obter livro por ID",
         "responses": {
-          "200": {
-            "description": "Detalhes do livro",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/Book" }
-              }
-            }
-          },
-          "404": {
-            "description": "Livro não encontrado"
-          }
+          "200": { "description": "Detalhes do livro", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Book" } } } },
+          "404": { "description": "Livro não encontrado" }
         }
       },
       "put": {
         "summary": "Atualiza um livro",
-        "security": [{ "bearerAuth": [] }],
+        "security": [ { "bearerAuth": [] } ],
         "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/Book" }
-            }
-          }
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Book" } } }
         },
         "responses": {
-          "200": {
-            "description": "Livro atualizado"
-          },
-          "401": {
-            "description": "Não autorizado"
-          },
-          "404": {
-            "description": "Livro não encontrado"
-          }
+          "200": { "description": "Livro atualizado com sucesso" },
+          "400": { "description": "Dados inválidos" },
+          "401": { "description": "Não autorizado" },
+          "404": { "description": "Livro não encontrado" }
         }
       },
       "delete": {
-        "summary": "Remove um livro",
-        "security": [{ "bearerAuth": [] }],
+        "summary": "Exclui um livro",
+        "security": [ { "bearerAuth": [] } ],
         "responses": {
-          "204": {
-            "description": "Livro removido"
-          },
-          "401": {
-            "description": "Não autorizado"
-          },
-          "404": {
-            "description": "Livro não encontrado"
-          }
+          "204": { "description": "Livro excluído com sucesso" },
+          "401": { "description": "Não autorizado" },
+          "404": { "description": "Livro não encontrado" }
         }
       }
     },
-    "/loans": {
-      "get": {
-        "summary": "Lista empréstimos (apenas os do próprio usuário para não-admin)",
-        "security": [{ "bearerAuth": [] }],
+    "/api/users/register": {
+      "post": {
+        "summary": "Registrar novo usuário",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } }
+        },
         "responses": {
-          "200": {
-            "description": "Lista de empréstimos",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/Loan" }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Não autorizado"
-          }
+          "201": { "description": "Usuário registrado com sucesso" },
+          "400": { "description": "Dados inválidos" }
+        }
+      }
+    },
+    "/api/users": {
+      "get": {
+        "summary": "Listar todos os usuários (admin)",
+        "security": [ { "bearerAuth": [] } ],
+        "responses": {
+          "200": { "description": "Lista de usuários", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/User" } } } } },
+          "401": { "description": "Não autorizado" }
         }
       },
       "post": {
-        "summary": "Cria um novo empréstimo",
-        "security": [{ "bearerAuth": [] }],
+        "summary": "Criar usuário (admin)",
+        "security": [ { "bearerAuth": [] } ],
         "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/Loan" }
-            }
-          }
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } }
         },
         "responses": {
-          "201": {
-            "description": "Empréstimo criado"
-          },
-          "401": {
-            "description": "Não autorizado"
-          }
+          "201": { "description": "Usuário criado com sucesso" },
+          "400": { "description": "Dados inválidos" },
+          "401": { "description": "Não autorizado" }
         }
       }
     },
-    "/oauth/token": {
-      "post": {
-        "summary": "Obter token de acesso",
-        "security": [],
+    "/api/users/{id}": {
+      "parameters": [
+        { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+      ],
+      "get": {
+        "summary": "Obter usuário por ID",
+        "security": [ { "bearerAuth": [] } ],
+        "responses": {
+          "200": { "description": "Usuário encontrado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } } },
+          "404": { "description": "Usuário não encontrado" },
+          "401": { "description": "Não autorizado" }
+        }
+      },
+      "put": {
+        "summary": "Atualizar usuário",
+        "security": [ { "bearerAuth": [] } ],
         "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } }
+        },
+        "responses": {
+          "200": { "description": "Usuário atualizado com sucesso" },
+          "400": { "description": "Dados inválidos" },
+          "401": { "description": "Não autorizado" },
+          "404": { "description": "Usuário não encontrado" }
+        }
+      },
+      "delete": {
+        "summary": "Excluir usuário",
+        "security": [ { "bearerAuth": [] } ],
+        "responses": {
+          "204": { "description": "Usuário excluído com sucesso" },
+          "401": { "description": "Não autorizado" },
+          "404": { "description": "Usuário não encontrado" }
+        }
+      }
+    },
+    "/api/loans": {
+      "get": {
+        "summary": "Listar empréstimos",
+        "security": [ { "bearerAuth": [] } ],
+        "responses": {
+          "200": { "description": "Lista de empréstimos", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Loan" } } } } },
+          "401": { "description": "Não autorizado" }
+        }
+      },
+      "post": {
+        "summary": "Criar novo empréstimo",
+        "security": [ { "bearerAuth": [] } ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Loan" } } }
+        },
+        "responses": {
+          "201": { "description": "Empréstimo criado com sucesso" },
+          "400": { "description": "Dados inválidos" },
+          "401": { "description": "Não autorizado" }
+        }
+      }
+    },
+    "/api/loans/{id}": {
+      "parameters": [
+        { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+      ],
+      "get": {
+        "summary": "Obter empréstimo por ID",
+        "security": [ { "bearerAuth": [] } ],
+        "responses": {
+          "200": { "description": "Empréstimo encontrado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Loan" } } } },
+          "404": { "description": "Empréstimo não encontrado" },
+          "401": { "description": "Não autorizado" }
+        }
+      },
+      "put": {
+        "summary": "Atualizar empréstimo",
+        "security": [ { "bearerAuth": [] } ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Loan" } } }
+        },
+        "responses": {
+          "200": { "description": "Empréstimo atualizado com sucesso" },
+          "400": { "description": "Dados inválidos" },
+          "401": { "description": "Não autorizado" },
+          "404": { "description": "Empréstimo não encontrado" }
+        }
+      },
+      "delete": {
+        "summary": "Excluir empréstimo",
+        "security": [ { "bearerAuth": [] } ],
+        "responses": {
+          "204": { "description": "Empréstimo excluído com sucesso" },
+          "401": { "description": "Não autorizado" },
+          "404": { "description": "Empréstimo não encontrado" }
+        }
+      }
+    },
+    "/api/oauth/token": {
+      "post": {
+        "summary": "Obter tokens (password & refresh)",
+        "requestBody": {
+          "required": true,
           "content": {
             "application/x-www-form-urlencoded": {
               "schema": {
                 "type": "object",
                 "properties": {
-                  "grant_type": {
-                    "type": "string",
-                    "enum": ["password", "refresh_token"]
-                  },
+                  "grant_type": { "type": "string", "enum": ["password","refresh_token"] },
                   "username": { "type": "string" },
                   "password": { "type": "string" },
                   "refresh_token": { "type": "string" }
@@ -233,23 +288,8 @@
           }
         },
         "responses": {
-          "200": {
-            "description": "Token de acesso gerado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "access_token": { "type": "string" },
-                    "refresh_token": { "type": "string" }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Credenciais inválidas"
-          }
+          "200": { "description": "Tokens gerados", "content": { "application/json": { "schema": { "type": "object", "properties": { "access_token": { "type": "string" }, "refresh_token": { "type": "string" } } } } } },
+          "401": { "description": "Credenciais inválidas" }
         }
       }
     }
