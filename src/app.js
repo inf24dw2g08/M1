@@ -2,11 +2,13 @@ const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const jwt = require('jsonwebtoken');
 const userRoutes = require('./routes/userRoutes');
 const bookRoutes = require('./routes/bookRoutes');
 const loanRoutes = require('./routes/loanRoutes');
 const oauthRoutes = require('./routes/oauthRoutes');
 const errorHandler = require('./middleware/errorHandler');
+const { jwtSecret } = require('./middleware/auth');
 
 const app = express();
 
@@ -48,6 +50,23 @@ app.use('/api/users', userRoutes);
 app.use('/api/books', bookRoutes);
 app.use('/api/loans', loanRoutes);
 app.use('/api/oauth', oauthRoutes);
+
+// Rotas de UI
+app.get('/dashboard', (req, res) => {
+  const token = req.query.token || req.cookies?.jwt_token;
+  if (!token) return res.redirect('/');
+  try {
+    const user = jwt.verify(token, jwtSecret);
+    return res.render('dashboard', { user });
+  } catch {
+    return res.redirect('/?error=invalid_token');
+  }
+});
+
+app.get('/logout', (req, res) => {
+  res.clearCookie('jwt_token');
+  res.redirect('/');
+});
 
 // Rota raiz opcional para redirecionar para a documentação da API
 app.get('/', (req, res) => {
