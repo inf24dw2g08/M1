@@ -255,9 +255,16 @@ router.get('/google/callback', async (req, res) => {
     await user.update({ refresh_token: refreshToken });
     console.log('Token gerado (COPIE ESTE VALOR):', accessToken);
     
-    // salva cookie e redireciona
-    res.cookie('jwt_token', accessToken, { httpOnly: true, maxAge: 3600 * 1000 });
-    return res.redirect(`/dashboard`);
+// salva cookie e renderiza diretamente o dashboard
+res.cookie('jwt_token', accessToken, { httpOnly: true, maxAge: 3600 * 1000 });
+return res.render('dashboard', { 
+  user: { 
+    username: user.username, 
+    email: user.email,
+    role: user.role
+  },
+  token: accessToken
+});
   } catch (error) {
     console.error('Erro ao processar callback do Google:', error);
     return res.redirect('/login?error=callback_error');

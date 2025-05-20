@@ -8,6 +8,8 @@ const loanRoutes = require('./routes/loanRoutes');
 const oauthRoutes = require('./routes/oauthRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const swaggerUi = require('swagger-ui-express');
+const jwt = require('jsonwebtoken');
+const { jwtSecret } = require('./middleware/auth');
 
 // Use o swaggerDocs exportado do arquivo swagger.js
 const { swaggerDocs } = require('./swagger');
@@ -24,6 +26,37 @@ app.use(express.static(path.join(__dirname, '../public')));
 // Configurar views
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+
+// Rota de Dashboard
+app.get('/dashboard', (req, res) => {
+  const token = req.cookies.jwt_token;
+  let user = { username: 'Visitante', email: 'Sem email disponível' };
+  
+  if (token) {
+    try {
+      // Decodificar token JWT para obter informações do usuário
+      const decoded = jwt.verify(token, jwtSecret);
+      user = {
+        username: decoded.username,
+        email: decoded.email,
+        role: decoded.role
+      };
+    } catch (error) {
+      console.error('Erro ao decodificar token:', error);
+    }
+  }
+  
+  res.render('dashboard', { user });
+});
+
+// Rota de Logout
+app.get('/logout', (req, res) => {
+  // Limpar o cookie jwt_token
+  res.clearCookie('jwt_token');
+  
+  // Redirecionar para a página inicial
+  res.redirect('/');
+});
 
 // Documentação Swagger
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));

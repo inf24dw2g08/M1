@@ -64,18 +64,6 @@ const swaggerOptions = {
               enum: ['user', 'admin'],
               description: 'Papel do usuário no sistema'
             },
-            google_id: {
-              type: 'string',
-              description: 'ID do Google (para autenticação OAuth)'
-            },
-            external_auth: {
-              type: 'string',
-              description: 'Provedor de autenticação externa'
-            },
-            refresh_token: {
-              type: 'string',
-              description: 'Token de atualização'
-            },
             created_at: {
               type: 'string',
               format: 'date-time',
