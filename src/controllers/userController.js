@@ -1,14 +1,17 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { Op } = require('sequelize');
 const User = require('../models/userModel');
 
 // listar todos usuários
 const getAllUsers = async (req, res) => {
+  console.log('getAllUsers chamado por:', req.user); // log do usuário autenticado
   try {
-    const users = await User.findAll();
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const users = await User.findAll({ attributes: ['id','username','email','role'] });
+    return res.json(users);
+  } catch (error) {
+    console.error('Erro ao buscar usuários:', error);
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -64,17 +67,29 @@ const deleteUser = async (req, res) => {
 
 // registrar novo usuário (rota pública)
 const registerUser = async (req, res) => {
+  console.log('registerUser body:', req.body);        // log do payload
   try {
     const { username, email, password } = req.body;
-    if (!username||!email||!password) return res.status(400).json({ message: 'Campos obrigatórios faltando' });
-    const exists = await User.findOne({ where: { [User.sequelize.Op.or]: [{username},{email}] } });
-    if (exists) return res.status(400).json({ message: 'Username ou email já em uso' });
+    if (!username || !email || !password) {
+      return res.status(400).json({ error: 'Campos obrigatórios faltando' });
+    }
+    const exists = await User.findOne({
+      where: {
+        [Op.or]: [
+          { username },
+          { email }
+        ]
+      }
+    });
+    if (exists) {
+      return res.status(400).json({ error: 'Username ou email já em uso' });
+    }
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create({ username, email, password: hashed, role:'user' });
     res.status(201).json(user);
   } catch (error) {
-    console.error('Erro ao registrar usuário:', error);
-    res.status(500).json({ message: 'Erro ao registrar usuário' });
+    console.error('Erro ao registrar usuário:', error);  // log do stack
+    res.status(500).json({ error: error.message });       // retorna mensagem real
   }
 };
 

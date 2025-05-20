@@ -1,38 +1,51 @@
 require('dotenv').config();
 const app = require('./src/app');
 const sequelize = require('./src/config/db.config');
-const Book = require('./src/models/bookModel');
+const bcrypt = require('bcryptjs');
+const User = require('./src/models/userModel');
 
 const PORT = process.env.PORT || 3000;
 
-(async function startServer() {
+(async () => {
   try {
-    console.log('Conectando ao banco de dados...');
+    console.log('Conectando ao banco...');
     await sequelize.authenticate();
-    console.log('Conexão estabelecida com sucesso!');
+    console.log('Banco conectado.');
     
-    // Sincronizar modelos
-    await sequelize.sync();
-    console.log('Modelos sincronizados com banco de dados');
-    
-    // Verificar se existem livros
-    const count = await Book.count();
-    if (count === 0) {
-      console.log('Inserindo livros de exemplo...');
-      await Book.bulkCreate([
-        { title: 'Dom Quixote', author: 'Miguel de Cervantes', published_year: 1605 },
-        { title: 'Os Lusíadas', author: 'Luís de Camões', published_year: 1572 },
-        { title: 'O Príncipe', author: 'Maquiavel', published_year: 1532 }
-      ]);
-      console.log('Livros inseridos com sucesso!');
+    try {
+      // Tenta auto-alterar esquema
+      await sequelize.sync({ alter: true });
+    } catch (err) {
+      // ER_FK_COLUMN_NOT_NULL = errno 1830
+      if (err.parent?.errno === 1830) {
+        console.warn('Ignorado ER_FK_COLUMN_NOT_NULL durante sync');
+      } else {
+        throw err;
+      }
     }
-    
+    console.log('Modelos sincronizados.');
+
+    // Seed admin e força senha
+    const [admin, created] = await User.findOrCreate({
+      where: { username: 'admin' },
+      defaults: {
+        email: 'admin@example.com',
+        password: await bcrypt.hash('admin123', 10),
+        role: 'admin'
+      }
+    });
+    if (!created) {
+      await admin.update({ password: await bcrypt.hash('admin123', 10) });
+      console.log('Senha do admin ajustada para admin123');
+    } else {
+      console.log('Usuário admin criado');
+    }
+
     app.listen(PORT, () => {
       console.log(`Servidor rodando em http://localhost:${PORT}`);
-      console.log(`Documentação da API disponível em http://localhost:${PORT}/api-docs`);
     });
-  } catch (error) {
-    console.error('Erro na inicialização:', error);
+  } catch (err) {
+    console.error('Erro na inicialização:', err);
     process.exit(1);
   }
 })();

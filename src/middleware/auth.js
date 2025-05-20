@@ -280,21 +280,22 @@ module.exports = {
 };
 
 exports.authenticateToken = (req, res, next) => {
-  const token = req.header('Authorization')?.split(' ')[1] || 
-                req.cookies?.jwt_token || 
-                req.query?.token;
-  
-  if (!token) return res.status(401).json({ error: 'Acesso negado. Token não fornecido.' });
-
+  const authHeader = req.header('Authorization');
+  const token = (authHeader && authHeader.split(' ')[1]) || req.cookies?.jwt_token;
+  if (!token) return res.status(401).json({ error: 'Token obrigatório' });
   try {
-    const verified = jwt.verify(token, jwtSecret);
-    req.user = verified;
-    
-    // Log detalhado do usuário autenticado
-    console.log(`[${new Date().toISOString()}] Usuário autenticado: ID=${verified.id}, Role=${verified.role}`);
-    
-    next();
+    req.user = jwt.verify(token, jwtSecret);
+    console.log('Usuário autenticado:', req.user);
+    return next();
   } catch (err) {
-    res.status(403).json({ error: 'Token inválido ou expirado.' });
+    return res.status(403).json({ error: 'Token inválido ou expirado' });
   }
+};
+
+exports.authorizeRole = (roles = []) => (req, res, next) => {
+  if (!req.user) return res.status(401).json({ error: 'Não autenticado' });
+  if (!roles.includes(req.user.role)) {
+    return res.status(403).json({ error: 'Permissão negada' });
+  }
+  return next();
 };

@@ -59,9 +59,6 @@
       }
     }
   },
-  "security": [
-    { "bearerAuth": [] }
-  ],
   "paths": {
     "/api/books": {
       "get": {
@@ -149,8 +146,7 @@
     },
     "/api/users": {
       "get": {
-        "summary": "Listar todos os usuários (admin)",
-        "security": [ { "bearerAuth": [] } ],
+        "summary": "Listar todos os usuários (público)",
         "responses": {
           "200": { "description": "Lista de usuários", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/User" } } } } },
           "401": { "description": "Não autorizado" }
@@ -175,8 +171,7 @@
         { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
       ],
       "get": {
-        "summary": "Obter usuário por ID",
-        "security": [ { "bearerAuth": [] } ],
+        "summary": "Obter usuário por ID (público)",
         "responses": {
           "200": { "description": "Usuário encontrado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } } },
           "404": { "description": "Usuário não encontrado" },
@@ -209,8 +204,7 @@
     },
     "/api/loans": {
       "get": {
-        "summary": "Listar empréstimos",
-        "security": [ { "bearerAuth": [] } ],
+        "summary": "Listar empréstimos (público)",
         "responses": {
           "200": { "description": "Lista de empréstimos", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Loan" } } } } },
           "401": { "description": "Não autorizado" }
@@ -235,8 +229,7 @@
         { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
       ],
       "get": {
-        "summary": "Obter empréstimo por ID",
-        "security": [ { "bearerAuth": [] } ],
+        "summary": "Obter empréstimo por ID (público)",
         "responses": {
           "200": { "description": "Empréstimo encontrado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Loan" } } } },
           "404": { "description": "Empréstimo não encontrado" },

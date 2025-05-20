@@ -17,11 +17,14 @@ const validateClient = (clientId, clientSecret) => {
 
 // Endpoint para obter token (OAuth 2.0 - Resource Owner Password Credentials Grant)
 router.post('/token', async (req, res) => {
+  const { grant_type, username, password, refresh_token } = req.body;
+  console.log('OAuth token request:', { grant_type, username });
   try {
-    const { grant_type, username, password, refresh_token } = req.body;
     if (grant_type === 'password') {
       const user = await User.findOne({ where: { username } });
+      console.log('Found user:', user && user.username);
       if (!user || !(await bcrypt.compare(password, user.password))) {
+        console.log('Invalid credentials for', username);
         return res.status(401).json({ error: 'Credenciais inválidas' });
       }
       const accessToken = jwt.sign({ id: user.id, role: user.role }, jwtSecret, { expiresIn: jwtExpiration });
@@ -37,6 +40,7 @@ router.post('/token', async (req, res) => {
     }
     res.status(400).json({ error: 'grant_type inválido' });
   } catch (err) {
+    console.error('Erro no /token:', err);
     res.status(500).json({ error: err.message });
   }
 });
