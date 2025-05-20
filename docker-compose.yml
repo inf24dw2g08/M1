@@ -8,8 +8,9 @@ services:
       - MYSQL_ROOT_PASSWORD=rootpassword
       - MYSQL_DATABASE=library_db
     volumes:
-      - ./src/config/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
-      - ./mysql-data:/var/lib/mysql     # antes era volume nomeado, agora bind-mount local
+      - ./src/config/ddl.sql:/docker-entrypoint-initdb.d/01-ddl.sql
+      - ./src/config/dml.sql:/docker-entrypoint-initdb.d/02-dml.sql
+      - ./mysql-data:/var/lib/mysql
     restart: unless-stopped
     command: --default-authentication-plugin=mysql_native_password
 
@@ -35,4 +36,4 @@ services:
       - GOOGLE_CALLBACK_URL=http://localhost:3000/api/oauth/google/callback
     depends_on:
       - mysql
-    restart: unless-stopped
+    restart: unless-stopped 
