@@ -2,6 +2,7 @@
 const Book = require('../models/bookModel');
 
 exports.getAllBooks = async (req, res, next) => {
+  console.log('GET /api/books'); // log
   try {
     const filters = {
       title: req.query.title,
@@ -20,6 +21,7 @@ exports.getAllBooks = async (req, res, next) => {
 };
 
 exports.getBookById = async (req, res) => {
+  console.log('GET /api/books/' + req.params.id);
   if (!req.params.id) {
     return res.status(400).json({ message: "ID not provided" });
   }
@@ -36,52 +38,43 @@ exports.getBookById = async (req, res) => {
   }
 };
 
-exports.createBook = async (req, res, next) => {
+exports.createBook = async (req, res) => {
+  console.log('POST /api/books body:', req.body);
   try {
-    // extrai somente os campos válidos
     const { title, author, isbn, published_year, quantity, available } = req.body;
     if (!title || !author) {
-      return res.status(400).json({ message: 'Title and author are required' });
+      return res.status(400).json({ error: 'Title and author are required' });
     }
-    const newBook = await Book.create({
-      title,
-      author,
-      isbn,
-      published_year,
-      quantity: quantity ?? 1,
-      available: available ?? true
-    });
-    // retorna o objeto criado
+    const newBook = await Book.create({ title, author, isbn, published_year, quantity: quantity ?? 1, available: available ?? true });
     return res.status(201).json(newBook);
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    console.error('Erro createBook:', err);
+    return res.status(500).json({ error: err.message });
   }
 };
 
-exports.updateBook = async (req, res, next) => {
+exports.updateBook = async (req, res) => {
+  console.log(`PUT /api/books/${req.params.id}`, req.body);
   try {
     const book = await Book.findByPk(req.params.id);
-    if (!book) {
-      return res.status(404).json({ message: 'Book not found' });
-    }
-    
-    // Atualizar o livro
+    if (!book) return res.status(404).json({ error: 'Book not found' });
     await book.update(req.body);
-    res.json({ message: 'Book updated successfully' });
-  } catch (error) {
-    next(error);
+    return res.json(book);
+  } catch (err) {
+    console.error('Erro updateBook:', err);
+    return res.status(500).json({ error: err.message });
   }
 };
 
-exports.deleteBook = async (req, res, next) => {
+exports.deleteBook = async (req, res) => {
+  console.log(`DELETE /api/books/${req.params.id}`);
   try {
     const rows = await Book.destroy({ where: { id: req.params.id } });
-    if (!rows) {
-      return res.status(404).json({ message: 'Book not found' });
-    }
-    res.json({ message: 'Book deleted successfully' });
-  } catch (error) {
-    next(error);
+    if (!rows) return res.status(404).json({ error: 'Book not found' });
+    return res.status(204).end();
+  } catch (err) {
+    console.error('Erro deleteBook:', err);
+    return res.status(500).json({ error: err.message });
   }
 };
 

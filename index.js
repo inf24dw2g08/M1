@@ -10,23 +10,14 @@ const PORT = process.env.PORT || 3000;
   try {
     console.log('Conectando ao banco...');
     await sequelize.authenticate();
-    console.log('Banco conectado.');
-    
-    try {
-      // Tenta auto-alterar esquema
-      await sequelize.sync({ alter: true });
-    } catch (err) {
-      // ER_FK_COLUMN_NOT_NULL = errno 1830
-      if (err.parent?.errno === 1830) {
-        console.warn('Ignorado ER_FK_COLUMN_NOT_NULL durante sync');
-      } else {
-        throw err;
-      }
-    }
-    console.log('Modelos sincronizados.');
+    console.log('Banco conectado. Forçando sync...');
 
-    // Seed admin e força senha
-    const [admin, created] = await User.findOrCreate({
+    // força DROP+CREATE de todas as tabelas
+    await sequelize.sync({ force: true });
+    console.log('Esquema recriado com force: true');
+
+    // seed admin
+    const [admin] = await User.findOrCreate({
       where: { username: 'admin' },
       defaults: {
         email: 'admin@example.com',
@@ -34,16 +25,11 @@ const PORT = process.env.PORT || 3000;
         role: 'admin'
       }
     });
-    if (!created) {
-      await admin.update({ password: await bcrypt.hash('admin123', 10) });
-      console.log('Senha do admin ajustada para admin123');
-    } else {
-      console.log('Usuário admin criado');
-    }
+    console.log('Admin seed OK (senha = admin123)');
 
-    app.listen(PORT, () => {
-      console.log(`Servidor rodando em http://localhost:${PORT}`);
-    });
+    app.listen(PORT, () =>
+      console.log(`Servidor rodando em http://localhost:${PORT}`)
+    );
   } catch (err) {
     console.error('Erro na inicialização:', err);
     process.exit(1);
