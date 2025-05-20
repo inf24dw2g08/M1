@@ -8,14 +8,16 @@ const loanRoutes = require('./routes/loanRoutes');
 const oauthRoutes = require('./routes/oauthRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const swaggerUi = require('swagger-ui-express');
-const swaggerDocument = require('../docs/swagger.json');
+
+// Use o swaggerDocs exportado do arquivo swagger.js
+const { swaggerDocs } = require('./swagger');
 
 const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json());                          // <— parse JSON
-app.use(express.urlencoded({ extended: true }));   // <— parse form-data
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, '../public')));
 
@@ -23,18 +25,19 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// monta documentação Swagger em /api-docs
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+// Documentação Swagger
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
-// Rotas da API (registradas antes do handler de erros)
+// Rotas da API
 app.use('/api/oauth', oauthRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/books', bookRoutes);
 app.use('/api/loans', loanRoutes);
 
-// Rota raiz opcional para redirecionar para a documentação da API
+// Rota raiz
 app.get('/', (req, res) => {
-  res.redirect('/api/docs');
+  res.redirect('/api-docs');
 });
 
 // Middleware de tratamento de erros

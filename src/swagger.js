@@ -21,6 +21,11 @@ const swaggerOptions = {
     ],
     components: {
       securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT'
+        },
         oauth2: {
           type: 'oauth2',
           flows: {
@@ -30,11 +35,6 @@ const swaggerOptions = {
               scopes: {}
             }
           }
-        },
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT'
         }
       },
       schemas: {
@@ -54,10 +54,27 @@ const swaggerOptions = {
               type: 'string',
               description: 'Email do usuário'
             },
+            password: {
+              type: 'string',
+              format: 'password',
+              description: 'Senha do usuário (não retornada nas consultas)'
+            },
             role: {
               type: 'string',
               enum: ['user', 'admin'],
               description: 'Papel do usuário no sistema'
+            },
+            google_id: {
+              type: 'string',
+              description: 'ID do Google (para autenticação OAuth)'
+            },
+            external_auth: {
+              type: 'string',
+              description: 'Provedor de autenticação externa'
+            },
+            refresh_token: {
+              type: 'string',
+              description: 'Token de atualização'
             },
             created_at: {
               type: 'string',
@@ -95,13 +112,9 @@ const swaggerOptions = {
               type: 'integer',
               description: 'Ano de publicação'
             },
-            genre: {
-              type: 'string',
-              description: 'Gênero do livro'
-            },
-            description: {
-              type: 'string',
-              description: 'Descrição do livro'
+            quantity: {
+              type: 'integer',
+              description: 'Quantidade disponível'
             },
             available: {
               type: 'boolean',
@@ -121,7 +134,7 @@ const swaggerOptions = {
         },
         Loan: {
           type: 'object',
-          required: ['user_id', 'book_id'],
+          required: ['book_id', 'due_date'],
           properties: {
             id: {
               type: 'integer',
@@ -154,6 +167,16 @@ const swaggerOptions = {
               type: 'string',
               enum: ['active', 'returned', 'overdue'],
               description: 'Status do empréstimo'
+            },
+            created_at: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Data de criação'
+            },
+            updated_at: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Data de atualização'
             }
           }
         },
@@ -168,436 +191,6 @@ const swaggerOptions = {
       }
     },
     paths: {
-      '/api/users/me': {
-        get: {
-          tags: ['Users'],
-          summary: 'Obter perfil do usuário atual',
-          description: 'Retorna informações do perfil do usuário autenticado',
-          security: [{ bearerAuth: [] }],
-          responses: {
-            '200': {
-              description: 'Operação bem-sucedida',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/User'
-                  }
-                }
-              }
-            },
-            '401': {
-              description: 'Não autorizado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            }
-          }
-        },
-        put: {
-          tags: ['Users'],
-          summary: 'Atualizar perfil do usuário atual',
-          description: 'Atualiza as informações do perfil do usuário autenticado',
-          security: [{ bearerAuth: [] }],
-          requestBody: {
-            required: true,
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    username: {
-                      type: 'string',
-                      description: 'Nome de usuário'
-                    },
-                    email: {
-                      type: 'string',
-                      description: 'Email do usuário'
-                    },
-                    password: {
-                      type: 'string',
-                      description: 'Nova senha (opcional)'
-                    }
-                  }
-                }
-              }
-            }
-          },
-          responses: {
-            '200': {
-              description: 'Operação bem-sucedida',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/User'
-                  }
-                }
-              }
-            },
-            '401': {
-              description: 'Não autorizado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      '/api/users': {
-        get: {
-          tags: ['Users'],
-          summary: 'Listar todos os usuários',
-          description: 'Retorna uma lista de todos os usuários (requer permissão de admin)',
-          security: [{ bearerAuth: [] }],
-          responses: {
-            '200': {
-              description: 'Operação bem-sucedida',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'array',
-                    items: {
-                      $ref: '#/components/schemas/User'
-                    }
-                  }
-                }
-              }
-            },
-            '401': {
-              description: 'Não autorizado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            },
-            '403': {
-              description: 'Proibido',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            }
-          }
-        },
-        post: {
-          tags: ['Users'],
-          summary: 'Criar novo usuário',
-          description: 'Cria um novo usuário no sistema (requer permissão de admin)',
-          security: [{ bearerAuth: [] }],
-          requestBody: {
-            required: true,
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  required: ['username', 'email', 'password'],
-                  properties: {
-                    username: {
-                      type: 'string',
-                      description: 'Nome de usuário'
-                    },
-                    email: {
-                      type: 'string',
-                      description: 'Email do usuário'
-                    },
-                    password: {
-                      type: 'string',
-                      description: 'Senha do usuário'
-                    },
-                    role: {
-                      type: 'string',
-                      enum: ['user', 'admin'],
-                      description: 'Papel do usuário (padrão: user)'
-                    }
-                  }
-                }
-              }
-            }
-          },
-          responses: {
-            '201': {
-              description: 'Usuário criado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/User'
-                  }
-                }
-              }
-            },
-            '400': {
-              description: 'Requisição inválida',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            },
-            '401': {
-              description: 'Não autorizado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            },
-            '403': {
-              description: 'Proibido',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      '/api/users/{id}': {
-        get: {
-          tags: ['Users'],
-          summary: 'Obter usuário por ID',
-          description: 'Retorna um usuário específico pelo ID',
-          security: [{ bearerAuth: [] }],
-          parameters: [
-            {
-              name: 'id',
-              in: 'path',
-              description: 'ID do usuário',
-              required: true,
-              schema: {
-                type: 'integer',
-                format: 'int64'
-              }
-            }
-          ],
-          responses: {
-            '200': {
-              description: 'Operação bem-sucedida',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/User'
-                  }
-                }
-              }
-            },
-            '401': {
-              description: 'Não autorizado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            },
-            '403': {
-              description: 'Proibido',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            },
-            '404': {
-              description: 'Usuário não encontrado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            }
-          }
-        },
-        put: {
-          tags: ['Users'],
-          summary: 'Atualizar usuário',
-          description: 'Atualiza um usuário específico pelo ID',
-          security: [{ bearerAuth: [] }],
-          parameters: [
-            {
-              name: 'id',
-              in: 'path',
-              description: 'ID do usuário',
-              required: true,
-              schema: {
-                type: 'integer',
-                format: 'int64'
-              }
-            }
-          ],
-          requestBody: {
-            required: true,
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    username: {
-                      type: 'string',
-                      description: 'Nome de usuário'
-                    },
-                    email: {
-                      type: 'string',
-                      description: 'Email do usuário'
-                    },
-                    password: {
-                      type: 'string',
-                      description: 'Nova senha (opcional)'
-                    },
-                    role: {
-                      type: 'string',
-                      enum: ['user', 'admin'],
-                      description: 'Papel do usuário'
-                    }
-                  }
-                }
-              }
-            }
-          },
-          responses: {
-            '200': {
-              description: 'Operação bem-sucedida',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/User'
-                  }
-                }
-              }
-            },
-            '400': {
-              description: 'Requisição inválida',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            },
-            '401': {
-              description: 'Não autorizado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            },
-            '403': {
-              description: 'Proibido',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            },
-            '404': {
-              description: 'Usuário não encontrado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            }
-          }
-        },
-        delete: {
-          tags: ['Users'],
-          summary: 'Remover usuário',
-          description: 'Remove um usuário específico pelo ID',
-          security: [{ bearerAuth: [] }],
-          parameters: [
-            {
-              name: 'id',
-              in: 'path',
-              description: 'ID do usuário',
-              required: true,
-              schema: {
-                type: 'integer',
-                format: 'int64'
-              }
-            }
-          ],
-          responses: {
-            '200': {
-              description: 'Operação bem-sucedida',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      message: {
-                        type: 'string',
-                        example: 'Usuário excluído com sucesso'
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            '401': {
-              description: 'Não autorizado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            },
-            '403': {
-              description: 'Proibido',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            },
-            '404': {
-              description: 'Usuário não encontrado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
       '/api/books': {
         get: {
           tags: ['Books'],
@@ -611,7 +204,7 @@ const swaggerOptions = {
                   schema: {
                     type: 'array',
                     items: {
-                      $ref: '#/components/schemas/Book'
+                      '$ref': '#/components/schemas/Book'
                     }
                   }
                 }
@@ -629,7 +222,7 @@ const swaggerOptions = {
             content: {
               'application/json': {
                 schema: {
-                  $ref: '#/components/schemas/Book'
+                  '$ref': '#/components/schemas/Book'
                 }
               }
             }
@@ -640,40 +233,19 @@ const swaggerOptions = {
               content: {
                 'application/json': {
                   schema: {
-                    $ref: '#/components/schemas/Book'
+                    '$ref': '#/components/schemas/Book'
                   }
                 }
               }
             },
             '400': {
-              description: 'Requisição inválida',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
+              description: 'Requisição inválida'
             },
             '401': {
-              description: 'Não autorizado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
+              description: 'Não autorizado'
             },
             '403': {
-              description: 'Proibido',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
+              description: 'Proibido'
             }
           }
         }
@@ -701,20 +273,13 @@ const swaggerOptions = {
               content: {
                 'application/json': {
                   schema: {
-                    $ref: '#/components/schemas/Book'
+                    '$ref': '#/components/schemas/Book'
                   }
                 }
               }
             },
             '404': {
-              description: 'Livro não encontrado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
+              description: 'Livro não encontrado'
             }
           }
         },
@@ -740,7 +305,7 @@ const swaggerOptions = {
             content: {
               'application/json': {
                 schema: {
-                  $ref: '#/components/schemas/Book'
+                  '$ref': '#/components/schemas/Book'
                 }
               }
             }
@@ -751,50 +316,22 @@ const swaggerOptions = {
               content: {
                 'application/json': {
                   schema: {
-                    $ref: '#/components/schemas/Book'
+                    '$ref': '#/components/schemas/Book'
                   }
                 }
               }
             },
             '400': {
-              description: 'Requisição inválida',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
+              description: 'Requisição inválida'
             },
             '401': {
-              description: 'Não autorizado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
+              description: 'Não autorizado'
             },
             '403': {
-              description: 'Proibido',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
+              description: 'Proibido'
             },
             '404': {
-              description: 'Livro não encontrado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
+              description: 'Livro não encontrado'
             }
           }
         },
@@ -816,60 +353,26 @@ const swaggerOptions = {
             }
           ],
           responses: {
-            '200': {
-              description: 'Operação bem-sucedida',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      message: {
-                        type: 'string',
-                        example: 'Livro excluído com sucesso'
-                      }
-                    }
-                  }
-                }
-              }
+            '204': {
+              description: 'Operação bem-sucedida'
             },
             '401': {
-              description: 'Não autorizado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
+              description: 'Não autorizado'
             },
             '403': {
-              description: 'Proibido',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
+              description: 'Proibido'
             },
             '404': {
-              description: 'Livro não encontrado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
+              description: 'Livro não encontrado'
             }
           }
         }
       },
-      '/api/loans': {
+      '/api/users': {
         get: {
-          tags: ['Loans'],
-          summary: 'Listar empréstimos',
-          description: 'Retorna uma lista de empréstimos (usuários normais veem apenas seus empréstimos, admins veem todos)',
+          tags: ['Users'],
+          summary: 'Listar todos os usuários',
+          description: 'Retorna uma lista de todos os usuários (requer permissão de admin)',
           security: [{ bearerAuth: [] }],
           responses: {
             '200': {
@@ -879,21 +382,80 @@ const swaggerOptions = {
                   schema: {
                     type: 'array',
                     items: {
-                      $ref: '#/components/schemas/Loan'
+                      '$ref': '#/components/schemas/User'
                     }
                   }
                 }
               }
             },
             '401': {
-              description: 'Não autorizado',
+              description: 'Não autorizado'
+            },
+            '403': {
+              description: 'Proibido'
+            }
+          }
+        },
+        post: {
+          tags: ['Users'],
+          summary: 'Criar novo usuário',
+          description: 'Cria um novo usuário no sistema (requer permissão de admin)',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  '$ref': '#/components/schemas/User'
+                }
+              }
+            }
+          },
+          responses: {
+            '201': {
+              description: 'Usuário criado',
               content: {
                 'application/json': {
                   schema: {
-                    $ref: '#/components/schemas/Error'
+                    '$ref': '#/components/schemas/User'
                   }
                 }
               }
+            },
+            '400': {
+              description: 'Requisição inválida'
+            },
+            '401': {
+              description: 'Não autorizado'
+            },
+            '403': {
+              description: 'Proibido'
+            }
+          }
+        }
+      },
+      '/api/loans': {
+        get: {
+          tags: ['Loans'],
+          summary: 'Listar empréstimos',
+          description: 'Retorna uma lista de empréstimos (usuários normais veem apenas seus próprios empréstimos)',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Operação bem-sucedida',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'array',
+                    items: {
+                      '$ref': '#/components/schemas/Loan'
+                    }
+                  }
+                }
+              }
+            },
+            '401': {
+              description: 'Não autorizado'
             }
           }
         },
@@ -907,19 +469,7 @@ const swaggerOptions = {
             content: {
               'application/json': {
                 schema: {
-                  type: 'object',
-                  required: ['book_id'],
-                  properties: {
-                    book_id: {
-                      type: 'integer',
-                      description: 'ID do livro a ser emprestado'
-                    },
-                    due_date: {
-                      type: 'string',
-                      format: 'date-time',
-                      description: 'Data prevista para devolução'
-                    }
-                  }
+                  '$ref': '#/components/schemas/Loan'
                 }
               }
             }
@@ -930,557 +480,26 @@ const swaggerOptions = {
               content: {
                 'application/json': {
                   schema: {
-                    $ref: '#/components/schemas/Loan'
+                    '$ref': '#/components/schemas/Loan'
                   }
                 }
               }
             },
             '400': {
-              description: 'Requisição inválida',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
+              description: 'Requisição inválida'
             },
             '401': {
-              description: 'Não autorizado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
+              description: 'Não autorizado'
             },
             '404': {
-              description: 'Livro não encontrado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            },
-            '409': {
-              description: 'Livro não disponível para empréstimo',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      '/api/loans/{id}': {
-        get: {
-          tags: ['Loans'],
-          summary: 'Obter empréstimo por ID',
-          description: 'Retorna um empréstimo específico pelo ID (usuários normais podem ver apenas seus próprios empréstimos)',
-          security: [{ bearerAuth: [] }],
-          parameters: [
-            {
-              name: 'id',
-              in: 'path',
-              description: 'ID do empréstimo',
-              required: true,
-              schema: {
-                type: 'integer',
-                format: 'int64'
-              }
-            }
-          ],
-          responses: {
-            '200': {
-              description: 'Operação bem-sucedida',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Loan'
-                  }
-                }
-              }
-            },
-            '401': {
-              description: 'Não autorizado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            },
-            '403': {
-              description: 'Proibido',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            },
-            '404': {
-              description: 'Empréstimo não encontrado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            }
-          }
-        },
-        put: {
-          tags: ['Loans'],
-          summary: 'Atualizar empréstimo',
-          description: 'Atualiza um empréstimo específico pelo ID (usuários normais só podem atualizar seus próprios empréstimos)',
-          security: [{ bearerAuth: [] }],
-          parameters: [
-            {
-              name: 'id',
-              in: 'path',
-              description: 'ID do empréstimo',
-              required: true,
-              schema: {
-                type: 'integer',
-                format: 'int64'
-              }
-            }
-          ],
-          requestBody: {
-            required: true,
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    return_date: {
-                      type: 'string',
-                      format: 'date-time',
-                      description: 'Data efetiva de devolução'
-                    },
-                    status: {
-                      type: 'string',
-                      enum: ['active', 'returned', 'overdue'],
-                      description: 'Status do empréstimo'
-                    }
-                  }
-                }
-              }
-            }
-          },
-          responses: {
-            '200': {
-              description: 'Operação bem-sucedida',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Loan'
-                  }
-                }
-              }
-            },
-            '400': {
-              description: 'Requisição inválida',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            },
-            '401': {
-              description: 'Não autorizado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            },
-            '403': {
-              description: 'Proibido',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            },
-            '404': {
-              description: 'Empréstimo não encontrado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            }
-          }
-        },
-        delete: {
-          tags: ['Loans'],
-          summary: 'Remover empréstimo',
-          description: 'Remove um empréstimo específico pelo ID (apenas admin)',
-          security: [{ bearerAuth: [] }],
-          parameters: [
-            {
-              name: 'id',
-              in: 'path',
-              description: 'ID do empréstimo',
-              required: true,
-              schema: {
-                type: 'integer',
-                format: 'int64'
-              }
-            }
-          ],
-          responses: {
-            '200': {
-              description: 'Operação bem-sucedida',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      message: {
-                        type: 'string',
-                        example: 'Empréstimo excluído com sucesso'
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            '401': {
-              description: 'Não autorizado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            },
-            '403': {
-              description: 'Proibido',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            },
-            '404': {
-              description: 'Empréstimo não encontrado',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      '/api/oauth/token': {
-        post: {
-          tags: ['Authentication'],
-          summary: 'Obter token de acesso',
-          description: 'Obtém um token de acesso usando credenciais (OAuth 2.0 Password Grant)',
-          requestBody: {
-            required: true,
-            content: {
-              'application/x-www-form-urlencoded': {
-                schema: {
-                  type: 'object',
-                  required: ['grant_type', 'username', 'password', 'client_id', 'client_secret'],
-                  properties: {
-                    grant_type: {
-                      type: 'string',
-                      enum: ['password'],
-                      description: 'Tipo de concessão (deve ser "password")'
-                    },
-                    username: {
-                      type: 'string',
-                      description: 'Nome de usuário ou email'
-                    },
-                    password: {
-                      type: 'string',
-                      description: 'Senha do usuário'
-                    },
-                    client_id: {
-                      type: 'string',
-                      description: 'ID do cliente OAuth'
-                    },
-                    client_secret: {
-                      type: 'string',
-                      description: 'Segredo do cliente OAuth'
-                    },
-                    scope: {
-                      type: 'string',
-                      description: 'Escopos solicitados (opcional)'
-                    }
-                  }
-                }
-              }
-            }
-          },
-          responses: {
-            '200': {
-              description: 'Token gerado com sucesso',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      access_token: {
-                        type: 'string',
-                        description: 'Token de acesso JWT'
-                      },
-                      token_type: {
-                        type: 'string',
-                        example: 'Bearer'
-                      },
-                      expires_in: {
-                        type: 'integer',
-                        description: 'Tempo de expiração em segundos'
-                      },
-                      refresh_token: {
-                        type: 'string',
-                        description: 'Token de atualização'
-                      },
-                      scope: {
-                        type: 'string',
-                        description: 'Escopos concedidos'
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            '400': {
-              description: 'Requisição inválida',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      error: {
-                        type: 'string',
-                        example: 'invalid_request'
-                      },
-                      error_description: {
-                        type: 'string'
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            '401': {
-              description: 'Credenciais inválidas',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      error: {
-                        type: 'string',
-                        example: 'invalid_grant'
-                      },
-                      error_description: {
-                        type: 'string'
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      '/api/oauth/refresh': {
-        post: {
-          tags: ['Authentication'],
-          summary: 'Atualizar token de acesso',
-          description: 'Obtém um novo token de acesso usando um refresh token',
-          requestBody: {
-            required: true,
-            content: {
-              'application/x-www-form-urlencoded': {
-                schema: {
-                  type: 'object',
-                  required: ['grant_type', 'refresh_token', 'client_id', 'client_secret'],
-                  properties: {
-                    grant_type: {
-                      type: 'string',
-                      enum: ['refresh_token'],
-                      description: 'Tipo de concessão (deve ser "refresh_token")'
-                    },
-                    refresh_token: {
-                      type: 'string',
-                      description: 'Token de atualização'
-                    },
-                    client_id: {
-                      type: 'string',
-                      description: 'ID do cliente OAuth'
-                    },
-                    client_secret: {
-                      type: 'string',
-                      description: 'Segredo do cliente OAuth'
-                    },
-                    scope: {
-                      type: 'string',
-                      description: 'Escopos solicitados (opcional)'
-                    }
-                  }
-                }
-              }
-            }
-          },
-          responses: {
-            '200': {
-              description: 'Token renovado com sucesso',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      access_token: {
-                        type: 'string',
-                        description: 'Novo token de acesso JWT'
-                      },
-                      token_type: {
-                        type: 'string',
-                        example: 'Bearer'
-                      },
-                      expires_in: {
-                        type: 'integer',
-                        description: 'Tempo de expiração em segundos'
-                      },
-                      refresh_token: {
-                        type: 'string',
-                        description: 'Novo token de atualização'
-                      },
-                      scope: {
-                        type: 'string',
-                        description: 'Escopos concedidos'
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            '400': {
-              description: 'Requisição inválida',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      error: {
-                        type: 'string',
-                        example: 'invalid_request'
-                      },
-                      error_description: {
-                        type: 'string'
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            '401': {
-              description: 'Token de atualização inválido',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      error: {
-                        type: 'string',
-                        example: 'invalid_grant'
-                      },
-                      error_description: {
-                        type: 'string'
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      '/api/oauth/google': {
-        get: {
-          tags: ['Authentication'],
-          summary: 'Iniciar autenticação Google',
-          description: 'Inicia o fluxo de autenticação com o Google',
-          responses: {
-            '302': {
-              description: 'Redirecionado para o Google para autenticação'
-            }
-          }
-        }
-      },
-      '/api/oauth/google/callback': {
-        get: {
-          tags: ['Authentication'],
-          summary: 'Callback para autenticação Google',
-          description: 'URL de callback para o Google redirecionar após autenticação',
-          parameters: [
-            {
-              name: 'code',
-              in: 'query',
-              description: 'Código de autorização retornado pelo Google',
-              required: true,
-              schema: {
-                type: 'string'
-              }
-            }
-          ],
-          responses: {
-            '302': {
-              description: 'Redirecionado para a aplicação com token'
-            },
-            '500': {
-              description: 'Erro interno do servidor',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/Error'
-                  }
-                }
-              }
+              description: 'Livro não encontrado'
             }
           }
         }
       }
-    },
-    security: [
-      {
-        bearerAuth: []
-      }
-    ]
+    }
   },
-  apis: ['./src/routes/*.js'] // caminho dos arquivos com anotações JSDoc
+  apis: ['./src/routes/*.js']
 };
 
 const swaggerDocs = swaggerJsDoc(swaggerOptions);

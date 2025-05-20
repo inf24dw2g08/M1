@@ -11,7 +11,9 @@ const Book = sequelize.define('Book', {
   available: { type: DataTypes.BOOLEAN, defaultValue: true }
 }, {
   tableName: 'books',
-  timestamps: true
+  timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at'
 });
 
 module.exports = Book;

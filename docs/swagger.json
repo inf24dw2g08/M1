@@ -77,15 +77,7 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/Book" },
-              "example": {
-                "title": "Meu Livro",
-                "author": "Autor Exemplo",
-                "isbn": "1234567890",
-                "published_year": 2025,
-                "quantity": 3,
-                "available": true
-              }
+              "schema": { "$ref": "#/components/schemas/Book" }
             }
           }
         },
@@ -131,29 +123,17 @@
         }
       }
     },
-    "/api/users/register": {
-      "post": {
-        "summary": "Registrar novo usuário",
-        "requestBody": {
-          "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } }
-        },
-        "responses": {
-          "201": { "description": "Usuário registrado com sucesso" },
-          "400": { "description": "Dados inválidos" }
-        }
-      }
-    },
     "/api/users": {
       "get": {
-        "summary": "Listar todos os usuários (público)",
+        "summary": "Listar todos os usuários",
+        "security": [ { "bearerAuth": [] } ],
         "responses": {
           "200": { "description": "Lista de usuários", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/User" } } } } },
           "401": { "description": "Não autorizado" }
         }
       },
       "post": {
-        "summary": "Criar usuário (admin)",
+        "summary": "Criar usuário",
         "security": [ { "bearerAuth": [] } ],
         "requestBody": {
           "required": true,
@@ -166,45 +146,10 @@
         }
       }
     },
-    "/api/users/{id}": {
-      "parameters": [
-        { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
-      ],
-      "get": {
-        "summary": "Obter usuário por ID (público)",
-        "responses": {
-          "200": { "description": "Usuário encontrado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } } },
-          "404": { "description": "Usuário não encontrado" },
-          "401": { "description": "Não autorizado" }
-        }
-      },
-      "put": {
-        "summary": "Atualizar usuário",
-        "security": [ { "bearerAuth": [] } ],
-        "requestBody": {
-          "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } }
-        },
-        "responses": {
-          "200": { "description": "Usuário atualizado com sucesso" },
-          "400": { "description": "Dados inválidos" },
-          "401": { "description": "Não autorizado" },
-          "404": { "description": "Usuário não encontrado" }
-        }
-      },
-      "delete": {
-        "summary": "Excluir usuário",
-        "security": [ { "bearerAuth": [] } ],
-        "responses": {
-          "204": { "description": "Usuário excluído com sucesso" },
-          "401": { "description": "Não autorizado" },
-          "404": { "description": "Usuário não encontrado" }
-        }
-      }
-    },
     "/api/loans": {
       "get": {
-        "summary": "Listar empréstimos (público)",
+        "summary": "Listar empréstimos",
+        "security": [ { "bearerAuth": [] } ],
         "responses": {
           "200": { "description": "Lista de empréstimos", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Loan" } } } } },
           "401": { "description": "Não autorizado" }
@@ -221,68 +166,6 @@
           "201": { "description": "Empréstimo criado com sucesso" },
           "400": { "description": "Dados inválidos" },
           "401": { "description": "Não autorizado" }
-        }
-      }
-    },
-    "/api/loans/{id}": {
-      "parameters": [
-        { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
-      ],
-      "get": {
-        "summary": "Obter empréstimo por ID (público)",
-        "responses": {
-          "200": { "description": "Empréstimo encontrado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Loan" } } } },
-          "404": { "description": "Empréstimo não encontrado" },
-          "401": { "description": "Não autorizado" }
-        }
-      },
-      "put": {
-        "summary": "Atualizar empréstimo",
-        "security": [ { "bearerAuth": [] } ],
-        "requestBody": {
-          "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Loan" } } }
-        },
-        "responses": {
-          "200": { "description": "Empréstimo atualizado com sucesso" },
-          "400": { "description": "Dados inválidos" },
-          "401": { "description": "Não autorizado" },
-          "404": { "description": "Empréstimo não encontrado" }
-        }
-      },
-      "delete": {
-        "summary": "Excluir empréstimo",
-        "security": [ { "bearerAuth": [] } ],
-        "responses": {
-          "204": { "description": "Empréstimo excluído com sucesso" },
-          "401": { "description": "Não autorizado" },
-          "404": { "description": "Empréstimo não encontrado" }
-        }
-      }
-    },
-    "/api/oauth/token": {
-      "post": {
-        "summary": "Obter tokens (password & refresh)",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/x-www-form-urlencoded": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "grant_type": { "type": "string", "enum": ["password","refresh_token"] },
-                  "username": { "type": "string" },
-                  "password": { "type": "string" },
-                  "refresh_token": { "type": "string" }
-                },
-                "required": ["grant_type"]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Tokens gerados", "content": { "application/json": { "schema": { "type": "object", "properties": { "access_token": { "type": "string" }, "refresh_token": { "type": "string" } } } } } },
-          "401": { "description": "Credenciais inválidas" }
         }
       }
     }

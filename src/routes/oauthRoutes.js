@@ -17,27 +17,53 @@ const validateClient = (clientId, clientSecret) => {
 
 // Endpoint para obter token (OAuth 2.0 - Resource Owner Password Credentials Grant)
 router.post('/token', async (req, res) => {
-  const { grant_type, username, password, refresh_token } = req.body;
+  const { grant_type, username, password, refresh_token, client_id, client_secret } = req.body;
   console.log('OAuth token request:', { grant_type, username });
+  
   try {
     if (grant_type === 'password') {
       const user = await User.findOne({ where: { username } });
       console.log('Found user:', user && user.username);
+      
       if (!user || !(await bcrypt.compare(password, user.password))) {
         console.log('Invalid credentials for', username);
         return res.status(401).json({ error: 'Credenciais inválidas' });
       }
-      const accessToken = jwt.sign({ id: user.id, role: user.role }, jwtSecret, { expiresIn: jwtExpiration });
+      
+      const accessToken = jwt.sign(
+        { id: user.id, username: user.username, role: user.role },
+        jwtSecret,
+        { expiresIn: jwtExpiration }
+      );
+      
       const newRefresh = jwt.sign({ id: user.id }, jwtSecret, { expiresIn: refreshTokenExpiration });
       await user.update({ refresh_token: newRefresh });
-      return res.json({ access_token: accessToken, refresh_token: newRefresh });
+      
+      return res.json({ 
+        access_token: accessToken, 
+        token_type: 'Bearer', 
+        expires_in: 3600,
+        refresh_token: newRefresh 
+      });
     }
+    
     if (grant_type === 'refresh_token') {
       const user = await User.findOne({ where: { refresh_token } });
       if (!user) return res.status(401).json({ error: 'Refresh token inválido' });
-      const accessToken = jwt.sign({ id: user.id, role: user.role }, jwtSecret, { expiresIn: jwtExpiration });
-      return res.json({ access_token: accessToken });
+      
+      const accessToken = jwt.sign(
+        { id: user.id, username: user.username, role: user.role },
+        jwtSecret,
+        { expiresIn: jwtExpiration }
+      );
+      
+      return res.json({ 
+        access_token: accessToken,
+        token_type: 'Bearer',
+        expires_in: 3600
+      });
     }
+    
     res.status(400).json({ error: 'grant_type inválido' });
   } catch (err) {
     console.error('Erro no /token:', err);
@@ -72,10 +98,10 @@ router.post('/revoke', async (req, res) => {
         const decoded = jwt.verify(token, jwtSecret, { ignoreExpiration: true });
         
         // Remover o refresh token do usuário
-        await db.query(
-          'UPDATE users SET refresh_token = NULL WHERE id = ? AND refresh_token = ?',
-          [decoded.id, token]
-        );
+        const user = await User.findByPk(decoded.id);
+        if (user) {
+          await user.update({ refresh_token: null });
+        }
         
         return res.status(200).end();
       } catch (error) {
@@ -227,7 +253,8 @@ router.get('/google/callback', async (req, res) => {
     );
     const refreshToken = jwt.sign({ id: user.id }, jwtSecret, { expiresIn: 86400 * 7 });
     await user.update({ refresh_token: refreshToken });
-
+    console.log('Token gerado (COPIE ESTE VALOR):', accessToken);
+    
     // salva cookie e redireciona
     res.cookie('jwt_token', accessToken, { httpOnly: true, maxAge: 3600 * 1000 });
     return res.redirect(`/dashboard`);

@@ -1,7 +1,8 @@
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
-console.log('Configurando Sequelize para conectar em:', {
+console.log('Configurando conexão ao banco de dados com:');
+console.log({
   host: process.env.DB_HOST || 'library_mysql',
   database: process.env.DB_NAME || 'library_db',
   user: process.env.DB_USER || 'root'
@@ -14,10 +15,12 @@ const sequelize = new Sequelize(
   {
     host: process.env.DB_HOST || 'library_mysql',
     dialect: 'mysql',
-    logging: console.log, // Ativar logs SQL durante debug
+    logging: console.log,
     define: {
       underscored: true,
-      timestamps: false // Desativar timestamps para compatibilidade
+      timestamps: true,
+      createdAt: 'created_at',
+      updatedAt: 'updated_at'
     },
     pool: {
       max: 5,

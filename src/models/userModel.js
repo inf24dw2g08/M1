@@ -12,7 +12,9 @@ const User = sequelize.define('User', {
   refresh_token: { type: DataTypes.TEXT }
 }, {
   tableName: 'users',
-  timestamps: true
+  timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at'
 });
 
 module.exports = User;
