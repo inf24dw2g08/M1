@@ -215,24 +215,18 @@ router.get('/google/callback', async (req, res) => {
       });
     }
     
-    // Gerar tokens
+    // gerar tokens
     const accessToken = jwt.sign(
       { id: user.id, username: user.username, email: user.email, role: user.role },
       jwtSecret,
       { expiresIn: 3600 }
     );
-    
-    const refreshToken = jwt.sign(
-      { id: user.id },
-      jwtSecret,
-      { expiresIn: 86400 * 7 }
-    );
-    
-    // Salvar refresh token
+    const refreshToken = jwt.sign({ id: user.id }, jwtSecret, { expiresIn: 86400 * 7 });
     await user.update({ refresh_token: refreshToken });
-    
-    // Redirecionar com token
-    return res.redirect(`/dashboard?token=${accessToken}`);
+
+    // salva cookie e redireciona
+    res.cookie('jwt_token', accessToken, { httpOnly: true, maxAge: 3600 * 1000 });
+    return res.redirect(`/dashboard`);
   } catch (error) {
     console.error('Erro ao processar callback do Google:', error);
     return res.redirect('/login?error=callback_error');

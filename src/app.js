@@ -8,7 +8,7 @@ const bookRoutes = require('./routes/bookRoutes');
 const loanRoutes = require('./routes/loanRoutes');
 const oauthRoutes = require('./routes/oauthRoutes');
 const errorHandler = require('./middleware/errorHandler');
-const { jwtSecret } = require('./middleware/auth');
+const { jwtSecret, authenticateToken } = require('./middleware/auth');
 
 const app = express();
 
@@ -51,16 +51,9 @@ app.use('/api/books', bookRoutes);
 app.use('/api/loans', loanRoutes);
 app.use('/api/oauth', oauthRoutes);
 
-// Rotas de UI
-app.get('/dashboard', (req, res) => {
-  const token = req.query.token || req.cookies?.jwt_token;
-  if (!token) return res.redirect('/');
-  try {
-    const user = jwt.verify(token, jwtSecret);
-    return res.render('dashboard', { user });
-  } catch {
-    return res.redirect('/?error=invalid_token');
-  }
+// Rota de dashboard
+app.get('/dashboard', authenticateToken, (req, res) => {
+  res.render('dashboard', { user: req.user });
 });
 
 app.get('/logout', (req, res) => {
