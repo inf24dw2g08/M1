@@ -7,12 +7,65 @@ const bookRoutes = require('./routes/bookRoutes');
 const loanRoutes = require('./routes/loanRoutes');
 const oauthRoutes = require('./routes/oauthRoutes');
 const errorHandler = require('./middleware/errorHandler');
-const swaggerUi = require('swagger-ui-express');
 const jwt = require('jsonwebtoken');
 const { jwtSecret } = require('./middleware/auth');
 
-// Use o swaggerDocs exportado do arquivo swagger.js
+// Adicione esta função de formatação de data no arquivo app.js (ou qualquer outro arquivo que você preferir)
+const formatDatePtBR = (date, includeTime = false) => {
+  if (!date) return null;
+  
+  const dateObj = new Date(date);
+  
+  // Formatar dia/mês/ano
+  const dia = dateObj.getDate().toString().padStart(2, '0');
+  const mes = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+  const ano = dateObj.getFullYear();
+  
+  let result = `${dia}/${mes}/${ano}`;
+  
+  // Adicionar horas e minutos se solicitado
+  if (includeTime) {
+    const hora = dateObj.getHours().toString().padStart(2, '0');
+    const minuto = dateObj.getMinutes().toString().padStart(2, '0');
+    result += ` ${hora}:${minuto}`;
+  }
+  
+  return result;
+};
+
+// Exportar a função para uso global (opcional)
+global.formatDatePtBR = formatDatePtBR;
+
+// Use o swaggerDocs exportado do arquivo swagger.js e configure opções de UI customizadas
 const { swaggerDocs } = require('./swagger');
+const swaggerUi = require('swagger-ui-express');
+
+// Configurações personalizadas para a UI do Swagger
+const swaggerUiOptions = {
+  explorer: true,
+  customCss: `
+    .swagger-ui .scheme-container,
+    .swagger-ui .topbar,
+    .swagger-ui section.models,
+    .swagger-ui .information-container .info .title small,
+    .swagger-ui .servers-title,
+    .swagger-ui .servers,
+    .swagger-ui .auth-wrapper,
+    .swagger-ui .information-container .info .auth-btn-wrapper {
+      display: none !important;
+    }
+    .swagger-ui .information-container {
+      margin-bottom: 20px;
+    }
+  `,
+  swaggerOptions: {
+    docExpansion: 'list',
+    filter: true,
+    defaultModelsExpandDepth: -1, // Oculta a seção de modelos
+    tagsSorter: 'alpha', // Ordena tags alfabeticamente
+    operationsSorter: 'alpha', // Ordena operações alfabeticamente
+  }
+};
 
 const app = express();
 
@@ -58,9 +111,9 @@ app.get('/logout', (req, res) => {
   res.redirect('/');
 });
 
-// Documentação Swagger
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+// Documentação Swagger com opções personalizadas
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs, swaggerUiOptions));
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs, swaggerUiOptions));
 
 // Rotas da API
 app.use('/api/oauth', oauthRoutes);

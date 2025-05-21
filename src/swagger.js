@@ -492,7 +492,35 @@ const swaggerOptions = {
 
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
 
+// Configurações adicionais do Swagger UI
+const swaggerUiOptions = {
+  explorer: true,
+  customCss: `
+    .swagger-ui .scheme-container,
+    .swagger-ui .topbar,
+    .swagger-ui section.models,
+    .swagger-ui .information-container .info .title small,
+    .swagger-ui .servers-title,
+    .swagger-ui .servers,
+    .swagger-ui .auth-wrapper,
+    .swagger-ui .information-container .info .auth-btn-wrapper {
+      display: none !important;
+    }
+    .swagger-ui .information-container {
+      margin-bottom: 20px;
+    }
+  `,
+  swaggerOptions: {
+    docExpansion: 'list',
+    filter: true,
+    defaultModelsExpandDepth: -1, // Oculta a seção de modelos
+    tagsSorter: 'alpha', // Ordena tags alfabeticamente
+    operationsSorter: 'alpha', // Ordena operações alfabeticamente
+  }
+};
+
 module.exports = {
   swaggerUi,
-  swaggerDocs
+  swaggerDocs,
+  swaggerUiOptions // Exporta as opções de UI
 };
